@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { api, Medicine, SaleItem } from '@/lib/api';
 import { Search, Camera, Trash2, Printer, Plus, Minus } from 'lucide-react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
+import { useBranch } from '@/contexts/BranchContext';
 
 export default function POS() {
   const [cart, setCart] = useState<SaleItem[]>([]);
@@ -10,6 +11,7 @@ export default function POS() {
   const [isScanning, setIsScanning] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [medicines, setMedicines] = useState<Medicine[]>([]);
+  const { selectedBranch } = useBranch();
 
   useEffect(() => {
     api.getMedicines().then(setMedicines);
@@ -51,22 +53,23 @@ export default function POS() {
   useEffect(() => {
     if (search.length > 1) {
       const results = medicines.filter(m => 
-        m.name.toLowerCase().includes(search.toLowerCase()) || 
-        m.barcode.startsWith(search)
+        (m.branchId === selectedBranch?.id) &&
+        (m.name.toLowerCase().includes(search.toLowerCase()) || 
+        m.barcode.startsWith(search))
       ).slice(0, 10);
       setSearchResults(results);
     } else {
       setSearchResults([]);
     }
-  }, [search, medicines]);
+  }, [search, medicines, selectedBranch]);
 
   const handleBarcodeScanned = (scannedBarcode: string) => {
-    const med = medicines.find(m => m.barcode === scannedBarcode);
+    const med = medicines.find(m => m.barcode === scannedBarcode && m.branchId === selectedBranch?.id);
     if (med) {
       addToCart(med);
       setSearch('');
     } else {
-      alert('لم يتم العثور على الدواء بهذا الباركود');
+      alert('لم يتم العثور على الدواء بهذا الباركود في هذا الفرع');
     }
   };
 
@@ -117,9 +120,14 @@ export default function POS() {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       await api.addSale({
         date: new Date().toISOString(),
+        type: 'cash',
         items: cart,
-        total,
-        cashier: user.username || 'Unknown'
+        totalBeforeDiscount: total,
+        discountPercent: 0,
+        discountValue: 0,
+        netTotal: total,
+        cashier: user.username || 'Unknown',
+        branchId: selectedBranch?.id
       });
 
       printInvoice();

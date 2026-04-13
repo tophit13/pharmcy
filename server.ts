@@ -46,7 +46,8 @@ async function startServer() {
       reorderLimit INTEGER,
       expiryDate TEXT,
       manufacturer TEXT,
-      storeId INTEGER
+      storeId INTEGER,
+      branchId INTEGER
     );
     CREATE TABLE IF NOT EXISTS sales (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -59,7 +60,8 @@ async function startServer() {
       netTotal REAL,
       cashier TEXT,
       customerId INTEGER,
-      storeId INTEGER
+      storeId INTEGER,
+      branchId INTEGER
     );
     CREATE TABLE IF NOT EXISTS purchases (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -72,7 +74,8 @@ async function startServer() {
       netTotal REAL,
       cashier TEXT,
       supplierId INTEGER,
-      storeId INTEGER
+      storeId INTEGER,
+      branchId INTEGER
     );
     CREATE TABLE IF NOT EXISTS customers (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -85,7 +88,8 @@ async function startServer() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT UNIQUE,
       passwordHash TEXT,
-      role TEXT
+      role TEXT,
+      branchId INTEGER
     );
     CREATE TABLE IF NOT EXISTS audit_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -100,13 +104,15 @@ async function startServer() {
       type TEXT,
       amount REAL,
       description TEXT,
-      cashier TEXT
+      cashier TEXT,
+      branchId INTEGER
     );
     CREATE TABLE IF NOT EXISTS branches (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT,
       address TEXT,
-      phone TEXT
+      phone TEXT,
+      manager TEXT
     );
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
@@ -144,8 +150,12 @@ async function startServer() {
 
   // Users
   app.get('/api/users', async (req, res) => {
-    const users = await db.all('SELECT id, username, role FROM users');
-    res.json(users);
+    try {
+      const users = await db.all('SELECT id, username, role FROM users');
+      res.json(users);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   app.post('/api/users', async (req, res) => {
@@ -160,98 +170,150 @@ async function startServer() {
   });
 
   app.put('/api/users/:id', async (req, res) => {
-    const { username, password, role } = req.body;
-    if (password) {
-      await db.run('UPDATE users SET username = ?, passwordHash = ?, role = ? WHERE id = ?', [username, password, role, req.params.id]);
-    } else {
-      await db.run('UPDATE users SET username = ?, role = ? WHERE id = ?', [username, role, req.params.id]);
+    try {
+      const { username, password, role } = req.body;
+      if (password) {
+        await db.run('UPDATE users SET username = ?, passwordHash = ?, role = ? WHERE id = ?', [username, password, role, req.params.id]);
+      } else {
+        await db.run('UPDATE users SET username = ?, role = ? WHERE id = ?', [username, role, req.params.id]);
+      }
+      await logAction(req.headers['x-username'] as string, 'UPDATE_USER', { id: req.params.id, username });
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
     }
-    await logAction(req.headers['x-username'] as string, 'UPDATE_USER', { id: req.params.id, username });
-    res.json({ success: true });
   });
 
   app.delete('/api/users/:id', async (req, res) => {
-    await db.run('DELETE FROM users WHERE id = ?', [req.params.id]);
-    await logAction(req.headers['x-username'] as string, 'DELETE_USER', { id: req.params.id });
-    res.json({ success: true });
+    try {
+      await db.run('DELETE FROM users WHERE id = ?', [req.params.id]);
+      await logAction(req.headers['x-username'] as string, 'DELETE_USER', { id: req.params.id });
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   // Stores
   app.get('/api/stores', async (req, res) => {
-    const stores = await db.all('SELECT * FROM stores');
-    res.json(stores);
+    try {
+      const stores = await db.all('SELECT * FROM stores');
+      res.json(stores);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   app.post('/api/stores', async (req, res) => {
-    const { name, branchId } = req.body;
-    const result = await db.run('INSERT INTO stores (name, branchId) VALUES (?, ?)', [name, branchId || 1]);
-    await logAction(req.headers['x-username'] as string, 'ADD_STORE', { id: result.lastID, name });
-    res.json({ id: result.lastID });
+    try {
+      const { name, branchId } = req.body;
+      const result = await db.run('INSERT INTO stores (name, branchId) VALUES (?, ?)', [name, branchId || 1]);
+      await logAction(req.headers['x-username'] as string, 'ADD_STORE', { id: result.lastID, name });
+      res.json({ id: result.lastID });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   app.put('/api/stores/:id', async (req, res) => {
-    const { name, branchId } = req.body;
-    await db.run('UPDATE stores SET name = ?, branchId = ? WHERE id = ?', [name, branchId || 1, req.params.id]);
-    await logAction(req.headers['x-username'] as string, 'UPDATE_STORE', { id: req.params.id, name });
-    res.json({ success: true });
+    try {
+      const { name, branchId } = req.body;
+      await db.run('UPDATE stores SET name = ?, branchId = ? WHERE id = ?', [name, branchId || 1, req.params.id]);
+      await logAction(req.headers['x-username'] as string, 'UPDATE_STORE', { id: req.params.id, name });
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   app.delete('/api/stores/:id', async (req, res) => {
-    await db.run('DELETE FROM stores WHERE id = ?', [req.params.id]);
-    await logAction(req.headers['x-username'] as string, 'DELETE_STORE', { id: req.params.id });
-    res.json({ success: true });
+    try {
+      await db.run('DELETE FROM stores WHERE id = ?', [req.params.id]);
+      await logAction(req.headers['x-username'] as string, 'DELETE_STORE', { id: req.params.id });
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   // Branches
   app.get('/api/branches', async (req, res) => {
-    const branches = await db.all('SELECT * FROM branches');
-    res.json(branches);
+    try {
+      const branches = await db.all('SELECT * FROM branches');
+      res.json(branches);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   app.post('/api/branches', async (req, res) => {
-    const { name, address, phone } = req.body;
-    const result = await db.run('INSERT INTO branches (name, address, phone) VALUES (?, ?, ?)', [name, address, phone]);
-    await logAction(req.headers['x-username'] as string, 'ADD_BRANCH', { id: result.lastID, name });
-    res.json({ id: result.lastID });
+    try {
+      const { name, address, phone } = req.body;
+      const result = await db.run('INSERT INTO branches (name, address, phone) VALUES (?, ?, ?)', [name, address, phone]);
+      await logAction(req.headers['x-username'] as string, 'ADD_BRANCH', { id: result.lastID, name });
+      res.json({ id: result.lastID });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   app.put('/api/branches/:id', async (req, res) => {
-    const { name, address, phone } = req.body;
-    await db.run('UPDATE branches SET name = ?, address = ?, phone = ? WHERE id = ?', [name, address, phone, req.params.id]);
-    await logAction(req.headers['x-username'] as string, 'UPDATE_BRANCH', { id: req.params.id, name });
-    res.json({ success: true });
+    try {
+      const { name, address, phone } = req.body;
+      await db.run('UPDATE branches SET name = ?, address = ?, phone = ? WHERE id = ?', [name, address, phone, req.params.id]);
+      await logAction(req.headers['x-username'] as string, 'UPDATE_BRANCH', { id: req.params.id, name });
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   app.delete('/api/branches/:id', async (req, res) => {
-    await db.run('DELETE FROM branches WHERE id = ?', [req.params.id]);
-    await logAction(req.headers['x-username'] as string, 'DELETE_BRANCH', { id: req.params.id });
-    res.json({ success: true });
+    try {
+      await db.run('DELETE FROM branches WHERE id = ?', [req.params.id]);
+      await logAction(req.headers['x-username'] as string, 'DELETE_BRANCH', { id: req.params.id });
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   // Daily Accounts
   app.get('/api/daily-accounts', async (req, res) => {
-    const accounts = await db.all('SELECT * FROM daily_accounts ORDER BY date DESC');
-    res.json(accounts);
+    try {
+      const accounts = await db.all('SELECT * FROM daily_accounts ORDER BY date DESC');
+      res.json(accounts);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   app.post('/api/daily-accounts', async (req, res) => {
-    const { date, type, amount, description, cashier } = req.body;
-    const result = await db.run(
-      'INSERT INTO daily_accounts (date, type, amount, description, cashier) VALUES (?, ?, ?, ?, ?)',
-      [date, type, amount, description, cashier]
-    );
-    await logAction(req.headers['x-username'] as string, 'ADD_DAILY_ACCOUNT', { id: result.lastID, type, amount });
-    res.json({ id: result.lastID });
+    try {
+      const { date, type, amount, description, cashier } = req.body;
+      const result = await db.run(
+        'INSERT INTO daily_accounts (date, type, amount, description, cashier) VALUES (?, ?, ?, ?, ?)',
+        [date, type, amount, description, cashier]
+      );
+      await logAction(req.headers['x-username'] as string, 'ADD_DAILY_ACCOUNT', { id: result.lastID, type, amount });
+      res.json({ id: result.lastID });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   // Settings
   app.get('/api/settings', async (req, res) => {
-    const settings = await db.all('SELECT * FROM settings');
-    const settingsObj = settings.reduce((acc: any, curr: any) => {
-      acc[curr.key] = curr.value;
-      return acc;
-    }, {});
-    res.json(settingsObj);
+    try {
+      const settings = await db.all('SELECT * FROM settings');
+      const settingsObj = settings.reduce((acc: any, curr: any) => {
+        acc[curr.key] = curr.value;
+        return acc;
+      }, {});
+      res.json(settingsObj);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   app.post('/api/settings', async (req, res) => {
@@ -276,14 +338,22 @@ async function startServer() {
 
   // Audit Logs
   app.get('/api/audit-logs', async (req, res) => {
-    const logs = await db.all('SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT 500');
-    res.json(logs);
+    try {
+      const logs = await db.all('SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT 500');
+      res.json(logs);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   // Medicines
   app.get('/api/medicines', async (req, res) => {
-    const medicines = await db.all('SELECT * FROM medicines');
-    res.json(medicines);
+    try {
+      const medicines = await db.all('SELECT * FROM medicines');
+      res.json(medicines);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   app.post('/api/medicines', async (req, res) => {
@@ -301,26 +371,38 @@ async function startServer() {
   });
 
   app.put('/api/medicines/:id', async (req, res) => {
-    const { code, barcode, name, unit, purchasePrice, salePrice, quantity, reorderLimit, expiryDate, manufacturer, storeId } = req.body;
-    await db.run(
-      'UPDATE medicines SET code = ?, barcode = ?, name = ?, unit = ?, purchasePrice = ?, salePrice = ?, quantity = ?, reorderLimit = ?, expiryDate = ?, manufacturer = ?, storeId = ? WHERE id = ?',
-      [code, barcode, name, unit, purchasePrice, salePrice, quantity, reorderLimit, expiryDate, manufacturer, storeId || 1, req.params.id]
-    );
-    await logAction(req.headers['x-username'] as string, 'UPDATE_MEDICINE', { id: req.params.id, name });
-    res.json({ success: true });
+    try {
+      const { code, barcode, name, unit, purchasePrice, salePrice, quantity, reorderLimit, expiryDate, manufacturer, storeId } = req.body;
+      await db.run(
+        'UPDATE medicines SET code = ?, barcode = ?, name = ?, unit = ?, purchasePrice = ?, salePrice = ?, quantity = ?, reorderLimit = ?, expiryDate = ?, manufacturer = ?, storeId = ? WHERE id = ?',
+        [code, barcode, name, unit, purchasePrice, salePrice, quantity, reorderLimit, expiryDate, manufacturer, storeId || 1, req.params.id]
+      );
+      await logAction(req.headers['x-username'] as string, 'UPDATE_MEDICINE', { id: req.params.id, name });
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   app.delete('/api/medicines/:id', async (req, res) => {
-    await db.run('DELETE FROM medicines WHERE id = ?', [req.params.id]);
-    await logAction(req.headers['x-username'] as string, 'DELETE_MEDICINE', { id: req.params.id });
-    res.json({ success: true });
+    try {
+      await db.run('DELETE FROM medicines WHERE id = ?', [req.params.id]);
+      await logAction(req.headers['x-username'] as string, 'DELETE_MEDICINE', { id: req.params.id });
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   // Sales
   app.get('/api/sales', async (req, res) => {
-    const sales = await db.all('SELECT * FROM sales');
-    const parsedSales = sales.map(s => ({ ...s, items: JSON.parse(s.items) }));
-    res.json(parsedSales);
+    try {
+      const sales = await db.all('SELECT * FROM sales');
+      const parsedSales = sales.map(s => ({ ...s, items: JSON.parse(s.items) }));
+      res.json(parsedSales);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   app.post('/api/sales', async (req, res) => {
@@ -340,17 +422,21 @@ async function startServer() {
       await db.exec('COMMIT');
       await logAction(cashier || (req.headers['x-username'] as string), 'ADD_SALE', { id: result.lastID, netTotal });
       res.json({ id: result.lastID });
-    } catch (error) {
+    } catch (error: any) {
       await db.exec('ROLLBACK');
-      res.status(500).json({ error: 'Transaction failed' });
+      res.status(500).json({ error: 'Transaction failed', details: error.message });
     }
   });
 
   // Purchases
   app.get('/api/purchases', async (req, res) => {
-    const purchases = await db.all('SELECT * FROM purchases');
-    const parsedPurchases = purchases.map(p => ({ ...p, items: JSON.parse(p.items) }));
-    res.json(parsedPurchases);
+    try {
+      const purchases = await db.all('SELECT * FROM purchases');
+      const parsedPurchases = purchases.map(p => ({ ...p, items: JSON.parse(p.items) }));
+      res.json(parsedPurchases);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   app.post('/api/purchases', async (req, res) => {
@@ -370,91 +456,131 @@ async function startServer() {
       await db.exec('COMMIT');
       await logAction(cashier || (req.headers['x-username'] as string), 'ADD_PURCHASE', { id: result.lastID, netTotal });
       res.json({ id: result.lastID });
-    } catch (error) {
+    } catch (error: any) {
       await db.exec('ROLLBACK');
-      res.status(500).json({ error: 'Transaction failed' });
+      res.status(500).json({ error: 'Transaction failed', details: error.message });
     }
   });
 
   // Suppliers
   app.get('/api/suppliers', async (req, res) => {
-    const suppliers = await db.all('SELECT * FROM suppliers');
-    res.json(suppliers);
+    try {
+      const suppliers = await db.all('SELECT * FROM suppliers');
+      res.json(suppliers);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   app.post('/api/suppliers', async (req, res) => {
-    const { name, phone, company, balance } = req.body;
-    const result = await db.run('INSERT INTO suppliers (name, phone, company, balance) VALUES (?, ?, ?, ?)', [name, phone, company, balance || 0]);
-    await logAction(req.headers['x-username'] as string, 'ADD_SUPPLIER', { id: result.lastID, name });
-    res.json({ id: result.lastID });
+    try {
+      const { name, phone, company, balance } = req.body;
+      const result = await db.run('INSERT INTO suppliers (name, phone, company, balance) VALUES (?, ?, ?, ?)', [name, phone, company, balance || 0]);
+      await logAction(req.headers['x-username'] as string, 'ADD_SUPPLIER', { id: result.lastID, name });
+      res.json({ id: result.lastID });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   app.put('/api/suppliers/:id', async (req, res) => {
-    const { name, phone, company, balance } = req.body;
-    await db.run('UPDATE suppliers SET name = ?, phone = ?, company = ?, balance = ? WHERE id = ?', [name, phone, company, balance, req.params.id]);
-    await logAction(req.headers['x-username'] as string, 'UPDATE_SUPPLIER', { id: req.params.id, name });
-    res.json({ success: true });
+    try {
+      const { name, phone, company, balance } = req.body;
+      await db.run('UPDATE suppliers SET name = ?, phone = ?, company = ?, balance = ? WHERE id = ?', [name, phone, company, balance, req.params.id]);
+      await logAction(req.headers['x-username'] as string, 'UPDATE_SUPPLIER', { id: req.params.id, name });
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   app.delete('/api/suppliers/:id', async (req, res) => {
-    await db.run('DELETE FROM suppliers WHERE id = ?', [req.params.id]);
-    await logAction(req.headers['x-username'] as string, 'DELETE_SUPPLIER', { id: req.params.id });
-    res.json({ success: true });
+    try {
+      await db.run('DELETE FROM suppliers WHERE id = ?', [req.params.id]);
+      await logAction(req.headers['x-username'] as string, 'DELETE_SUPPLIER', { id: req.params.id });
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   // Customers
   app.get('/api/customers', async (req, res) => {
-    const customers = await db.all('SELECT * FROM customers');
-    res.json(customers);
+    try {
+      const customers = await db.all('SELECT * FROM customers');
+      res.json(customers);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   app.post('/api/customers', async (req, res) => {
-    const { name, phone, notes, balance } = req.body;
-    const result = await db.run('INSERT INTO customers (name, phone, notes, balance) VALUES (?, ?, ?, ?)', [name, phone, notes, balance || 0]);
-    await logAction(req.headers['x-username'] as string, 'ADD_CUSTOMER', { id: result.lastID, name });
-    res.json({ id: result.lastID });
+    try {
+      const { name, phone, notes, balance } = req.body;
+      const result = await db.run('INSERT INTO customers (name, phone, notes, balance) VALUES (?, ?, ?, ?)', [name, phone, notes, balance || 0]);
+      await logAction(req.headers['x-username'] as string, 'ADD_CUSTOMER', { id: result.lastID, name });
+      res.json({ id: result.lastID });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   app.put('/api/customers/:id', async (req, res) => {
-    const { name, phone, notes, balance } = req.body;
-    await db.run('UPDATE customers SET name = ?, phone = ?, notes = ?, balance = ? WHERE id = ?', [name, phone, notes, balance, req.params.id]);
-    await logAction(req.headers['x-username'] as string, 'UPDATE_CUSTOMER', { id: req.params.id, name });
-    res.json({ success: true });
+    try {
+      const { name, phone, notes, balance } = req.body;
+      await db.run('UPDATE customers SET name = ?, phone = ?, notes = ?, balance = ? WHERE id = ?', [name, phone, notes, balance, req.params.id]);
+      await logAction(req.headers['x-username'] as string, 'UPDATE_CUSTOMER', { id: req.params.id, name });
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   app.delete('/api/customers/:id', async (req, res) => {
-    await db.run('DELETE FROM customers WHERE id = ?', [req.params.id]);
-    await logAction(req.headers['x-username'] as string, 'DELETE_CUSTOMER', { id: req.params.id });
-    res.json({ success: true });
+    try {
+      await db.run('DELETE FROM customers WHERE id = ?', [req.params.id]);
+      await logAction(req.headers['x-username'] as string, 'DELETE_CUSTOMER', { id: req.params.id });
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   // Users (Login)
   app.post('/api/login', async (req, res) => {
-    const { username, password } = req.body;
-    const user = await db.get('SELECT * FROM users WHERE username = ? AND passwordHash = ?', [username, password]);
-    if (user) {
-      await logAction(username, 'LOGIN', {});
-      res.json(user);
-    } else {
-      res.status(401).json({ error: 'Invalid credentials' });
+    try {
+      const { username, password } = req.body;
+      const user = await db.get('SELECT * FROM users WHERE username = ? AND passwordHash = ?', [username, password]);
+      if (user) {
+        await logAction(username, 'LOGIN', {});
+        res.json(user);
+      } else {
+        res.status(401).json({ error: 'Invalid credentials' });
+      }
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
     }
   });
 
   // Export/Import
   app.get('/api/export', async (req, res) => {
-    const medicines = await db.all('SELECT * FROM medicines');
-    const sales = await db.all('SELECT * FROM sales');
-    const customers = await db.all('SELECT * FROM customers');
-    const users = await db.all('SELECT * FROM users');
-    
-    await logAction(req.headers['x-username'] as string, 'EXPORT_DATA', {});
-    
-    res.json({
-      medicines,
-      sales: sales.map(s => ({ ...s, items: JSON.parse(s.items) })),
-      customers,
-      users
-    });
+    try {
+      const medicines = await db.all('SELECT * FROM medicines');
+      const sales = await db.all('SELECT * FROM sales');
+      const customers = await db.all('SELECT * FROM customers');
+      const users = await db.all('SELECT * FROM users');
+      
+      await logAction(req.headers['x-username'] as string, 'EXPORT_DATA', {});
+      
+      res.json({
+        medicines,
+        sales: sales.map(s => ({ ...s, items: JSON.parse(s.items) })),
+        customers,
+        users
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   app.post('/api/import', async (req, res) => {
@@ -472,8 +598,8 @@ async function startServer() {
           [m.id, m.barcode, m.name, m.purchasePrice, m.salePrice, m.quantity, m.expiryDate, m.manufacturer]);
       }
       for (const s of sales || []) {
-        await db.run('INSERT INTO sales (id, date, items, total, cashier, customerId) VALUES (?, ?, ?, ?, ?, ?)', 
-          [s.id, s.date, JSON.stringify(s.items), s.total, s.cashier, s.customerId]);
+        await db.run('INSERT INTO sales (id, date, type, items, totalBeforeDiscount, discountPercent, discountValue, netTotal, cashier, customerId, storeId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', 
+          [s.id, s.date, s.type || 'cash', JSON.stringify(s.items), s.totalBeforeDiscount || s.netTotal || 0, s.discountPercent || 0, s.discountValue || 0, s.netTotal || 0, s.cashier, s.customerId, s.storeId]);
       }
       for (const c of customers || []) {
         await db.run('INSERT INTO customers (id, name, phone, notes) VALUES (?, ?, ?, ?)', 

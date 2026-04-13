@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import { api, Medicine } from '@/lib/api';
 import { Package, AlertTriangle, Clock, TrendingUp } from 'lucide-react';
 import { startOfDay, endOfDay } from 'date-fns';
+import { useBranch } from '@/contexts/BranchContext';
 
 export default function Dashboard() {
   const [stats, setStats] = useState<any>(null);
+  const { selectedBranch } = useBranch();
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -12,15 +14,21 @@ export default function Dashboard() {
       const start = startOfDay(today).getTime();
       const end = endOfDay(today).getTime();
 
-      const allSales = await api.getSales();
+      let allSales = await api.getSales();
+      let allMedicines = await api.getMedicines();
+
+      if (selectedBranch) {
+        allSales = allSales.filter(s => s.branchId === selectedBranch.id);
+        allMedicines = allMedicines.filter(m => m.branchId === selectedBranch.id);
+      }
+
       const todaySales = allSales.filter(sale => {
         const saleTime = new Date(sale.date).getTime();
         return saleTime >= start && saleTime <= end;
       });
         
-      const totalSales = todaySales.reduce((sum, sale) => sum + (sale.netTotal || sale.total || 0), 0);
+      const totalSales = todaySales.reduce((sum, sale) => sum + (sale.netTotal || 0), 0);
       
-      const allMedicines = await api.getMedicines();
       const lowStock = allMedicines.filter(m => m.quantity <= (m.reorderLimit || 10));
       
       // Expiring in next 3 months
@@ -39,7 +47,7 @@ export default function Dashboard() {
     };
 
     fetchStats();
-  }, []);
+  }, [selectedBranch]);
 
   if (!stats) return <div className="p-8">جاري التحميل...</div>;
 

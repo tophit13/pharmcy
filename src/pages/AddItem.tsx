@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { api, Medicine } from '@/lib/api';
 import { PackagePlus, Save, X, Barcode as BarcodeIcon } from 'lucide-react';
+import { useBranch } from '@/contexts/BranchContext';
 
 export default function AddItem() {
+  const { selectedBranch } = useBranch();
   const [formData, setFormData] = useState<Partial<Medicine>>({
     code: '',
     barcode: '',
@@ -14,7 +16,8 @@ export default function AddItem() {
     reorderLimit: 5,
     expiryDate: '',
     manufacturer: '',
-    storeId: 1
+    storeId: 1,
+    branchId: selectedBranch?.id
   });
 
   const [stores, setStores] = useState<any[]>([]);
@@ -23,6 +26,12 @@ export default function AddItem() {
     fetchStores();
     generateCode();
   }, []);
+
+  useEffect(() => {
+    if (selectedBranch) {
+      setFormData(prev => ({ ...prev, branchId: selectedBranch.id }));
+    }
+  }, [selectedBranch]);
 
   const fetchStores = async () => {
     try {

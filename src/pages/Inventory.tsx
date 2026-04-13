@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api, Medicine } from '@/lib/api';
 import { Plus, Search, Edit, Trash2, AlertTriangle, X } from 'lucide-react';
+import { useBranch } from '@/contexts/BranchContext';
 
 export default function Inventory() {
   const [search, setSearch] = useState('');
@@ -8,6 +9,7 @@ export default function Inventory() {
   const [editingMed, setEditingMed] = useState<Medicine | null>(null);
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [filteredMedicines, setFilteredMedicines] = useState<Medicine[]>([]);
+  const { selectedBranch, branches } = useBranch();
 
   const loadMedicines = async () => {
     const data = await api.getMedicines();
@@ -19,18 +21,22 @@ export default function Inventory() {
   }, []);
 
   useEffect(() => {
-    if (search) {
-      setFilteredMedicines(
-        medicines.filter(m => 
-          m.name.toLowerCase().includes(search.toLowerCase()) || 
-          m.barcode.includes(search) ||
-          (m.code && m.code.includes(search))
-        )
-      );
-    } else {
-      setFilteredMedicines(medicines);
+    let result = medicines;
+    
+    if (selectedBranch) {
+      result = result.filter(m => m.branchId === selectedBranch.id);
     }
-  }, [search, medicines]);
+
+    if (search) {
+      result = result.filter(m => 
+        m.name.toLowerCase().includes(search.toLowerCase()) || 
+        m.barcode.includes(search) ||
+        (m.code && m.code.includes(search))
+      );
+    }
+    
+    setFilteredMedicines(result);
+  }, [search, medicines, selectedBranch]);
 
   const handleDelete = async (id: number) => {
     if (window.confirm('هل أنت متأكد من حذف هذا الدواء؟')) {
@@ -49,10 +55,15 @@ export default function Inventory() {
     setIsModalOpen(true);
   };
 
+  const getBranchName = (branchId?: number) => {
+    if (!branchId) return '-';
+    return branches.find(b => b.id === branchId)?.name || 'غير معروف';
+  };
+
   return (
     <div className="p-4 space-y-4">
       <div className="flex justify-between items-center bg-white p-4 rounded shadow-sm border border-gray-200">
-        <h1 className="text-2xl font-bold text-gray-800">قائمة الأصناف</h1>
+        <h1 className="text-2xl font-bold text-gray-800">قائمة الأصناف {selectedBranch ? `(${selectedBranch.name})` : ''}</h1>
         <button
           onClick={openAddModal}
           className="bg-[#2E7D32] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-green-800 transition-colors"
@@ -80,6 +91,7 @@ export default function Inventory() {
               <th className="p-3 font-medium">كود الصنف</th>
               <th className="p-3 font-medium">الباركود</th>
               <th className="p-3 font-medium">اسم الصنف</th>
+              <th className="p-3 font-medium">الفرع</th>
               <th className="p-3 font-medium">الوحدة</th>
               <th className="p-3 font-medium">سعر الشراء</th>
               <th className="p-3 font-medium">سعر البيع</th>
@@ -107,6 +119,7 @@ export default function Inventory() {
                       )}
                     </div>
                   </td>
+                  <td className="p-3 text-gray-700">{getBranchName(med.branchId)}</td>
                   <td className="p-3 text-gray-700">{med.unit || '-'}</td>
                   <td className="p-3 text-gray-700">{med.purchasePrice.toFixed(2)}</td>
                   <td className="p-3 font-bold text-green-700">{med.salePrice.toFixed(2)}</td>

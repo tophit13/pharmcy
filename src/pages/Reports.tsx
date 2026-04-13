@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { startOfDay, endOfDay, startOfMonth, endOfMonth, format } from 'date-fns';
 import { ar } from 'date-fns/locale';
+import { useBranch } from '@/contexts/BranchContext';
 
 export default function Reports() {
   const [reportType, setReportType] = useState<'daily' | 'monthly'>('daily');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [reportData, setReportData] = useState<any>(null);
+  const { selectedBranch } = useBranch();
 
   useEffect(() => {
     const fetchReport = async () => {
@@ -21,13 +23,19 @@ export default function Reports() {
         end = endOfMonth(date).getTime();
       }
 
-      const allSales = await api.getSales();
+      let allSales = await api.getSales();
+      let allMedicines = await api.getMedicines();
+
+      if (selectedBranch) {
+        allSales = allSales.filter(s => s.branchId === selectedBranch.id);
+        allMedicines = allMedicines.filter(m => m.branchId === selectedBranch.id);
+      }
+
       const sales = allSales.filter(sale => {
         const saleTime = new Date(sale.date).getTime();
         return saleTime >= start && saleTime <= end;
       });
 
-      const allMedicines = await api.getMedicines();
       const medicinesMap = new Map(allMedicines.map(m => [m.id, m]));
 
       let totalRevenue = 0;
@@ -35,7 +43,7 @@ export default function Reports() {
       const itemSales: Record<string, { name: string, quantity: number, revenue: number }> = {};
 
       for (const sale of sales) {
-        totalRevenue += sale.netTotal || sale.total || 0;
+        totalRevenue += sale.netTotal || 0;
         for (const item of sale.items) {
           const med = medicinesMap.get(item.medicineId);
           if (med) {
@@ -62,7 +70,7 @@ export default function Reports() {
     };
 
     fetchReport();
-  }, [reportType, selectedDate]);
+  }, [reportType, selectedDate, selectedBranch]);
 
   if (!reportData) return <div className="p-8">جاري التحميل...</div>;
 

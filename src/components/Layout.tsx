@@ -5,17 +5,20 @@ import {
   User,
   Clock,
   Calendar,
-  Monitor
+  Monitor,
+  MapPin
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ar } from 'date-fns/locale';
+import { useBranch } from '@/contexts/BranchContext';
 
 export default function Layout({ onLogout }: { onLogout: () => void }) {
   const location = useLocation();
   const [time, setTime] = useState(new Date());
   const [user, setUser] = useState<{username: string, role: string} | null>(null);
   const [loginTime] = useState(new Date());
+  const { branches, selectedBranch, setSelectedBranch } = useBranch();
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -105,7 +108,7 @@ export default function Layout({ onLogout }: { onLogout: () => void }) {
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-[#f0f0f0] font-sans">
       {/* Top Menu Bar - Orange */}
-      <header className="bg-[#FF8C00] text-white shadow-md z-10 flex items-center justify-between px-2 h-8 text-sm">
+      <header className="bg-[#FF8C00] text-white shadow-md z-10 flex items-center justify-between px-2 h-10 text-sm">
         <div className="flex items-center space-x-reverse space-x-4">
           {menus.map((menu, idx) => (
             <div key={idx} className="relative group cursor-pointer hover:bg-orange-600 px-2 py-1 rounded">
@@ -124,10 +127,29 @@ export default function Layout({ onLogout }: { onLogout: () => void }) {
             </div>
           ))}
         </div>
-        <button onClick={onLogout} className="hover:bg-orange-600 px-2 py-1 rounded flex items-center gap-1">
-          <LogOut className="w-4 h-4" />
-          خروج
-        </button>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 bg-white/20 px-3 py-1 rounded">
+            <MapPin className="w-4 h-4" />
+            <select 
+              className="bg-transparent text-white outline-none cursor-pointer [&>option]:text-black"
+              value={selectedBranch?.id || ''}
+              onChange={(e) => {
+                const branch = branches.find(b => b.id === Number(e.target.value));
+                if (branch) setSelectedBranch(branch);
+              }}
+            >
+              {branches.map(branch => (
+                <option key={branch.id} value={branch.id}>
+                  {branch.name || 'فرع بدون اسم'}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button onClick={onLogout} className="hover:bg-orange-600 px-2 py-1 rounded flex items-center gap-1">
+            <LogOut className="w-4 h-4" />
+            خروج
+          </button>
+        </div>
       </header>
 
       {/* Main Content Area */}

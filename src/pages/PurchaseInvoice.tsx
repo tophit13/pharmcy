@@ -18,12 +18,14 @@ import {
   XCircle,
   Printer
 } from 'lucide-react';
+import { useBranch } from '@/contexts/BranchContext';
 
 export default function PurchaseInvoice() {
   const [items, setItems] = useState<SaleItem[]>([]);
   const [barcode, setBarcode] = useState('');
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const { selectedBranch } = useBranch();
   
   // Invoice Details
   const [invoiceType, setInvoiceType] = useState<'cash' | 'credit'>('cash');
@@ -53,11 +55,11 @@ export default function PurchaseInvoice() {
     e.preventDefault();
     if (!barcode) return;
 
-    const med = medicines.find(m => m.barcode === barcode || m.code === barcode);
+    const med = medicines.find(m => (m.barcode === barcode || m.code === barcode) && m.branchId === selectedBranch?.id);
     if (med) {
       addItem(med);
     } else {
-      alert('الصنف غير موجود. يمكنك إضافته من شاشة الأصناف.');
+      alert('الصنف غير موجود في هذا الفرع. يمكنك إضافته من شاشة الأصناف.');
     }
     setBarcode('');
   };
@@ -133,7 +135,8 @@ export default function PurchaseInvoice() {
         netTotal,
         cashier: JSON.parse(localStorage.getItem('user') || '{}').username || 'غير معروف',
         supplierId: selectedSupplier ? Number(selectedSupplier) : undefined,
-        storeId: 1
+        storeId: 1,
+        branchId: selectedBranch?.id
       });
       
       alert('تم حفظ فاتورة المشتريات بنجاح');

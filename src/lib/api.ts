@@ -11,6 +11,7 @@ export interface Medicine {
   expiryDate: string;
   manufacturer: string;
   storeId?: number;
+  branchId?: number;
 }
 
 export interface SaleItem {
@@ -35,6 +36,7 @@ export interface Sale {
   cashier: string;
   customerId?: number;
   storeId?: number;
+  branchId?: number;
 }
 
 export interface Purchase {
@@ -49,6 +51,15 @@ export interface Purchase {
   cashier: string;
   supplierId?: number;
   storeId?: number;
+  branchId?: number;
+}
+
+export interface Branch {
+  id: number;
+  name: string;
+  address: string;
+  phone: string;
+  manager?: string;
 }
 
 export interface Customer {

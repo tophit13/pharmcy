@@ -28,6 +28,8 @@ import SalesReturn from './pages/SalesReturn';
 import CashierClose from './pages/CashierClose';
 import About from './pages/About';
 
+import { BranchProvider } from './contexts/BranchContext';
+
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
@@ -40,51 +42,53 @@ export default function App() {
 
   return (
     <Router>
-      <div dir="rtl" className="min-h-screen bg-gray-50 font-sans text-gray-900">
-        <Routes>
-          <Route 
-            path="/login" 
-            element={!isAuthenticated ? <Login onLogin={() => setIsAuthenticated(true)} /> : <Navigate to="/" />} 
-          />
-          
-          {isAuthenticated ? (
-            <Route path="/" element={<Layout onLogout={() => {
-              localStorage.removeItem('user');
-              setIsAuthenticated(false);
-            }} />}>
-              <Route index element={<Dashboard />} />
-              <Route path="pos" element={<SalesInvoice />} />
-              <Route path="purchases/new" element={<PurchaseInvoice />} />
-              <Route path="inventory" element={<Inventory />} />
-              <Route path="reports" element={<Reports />} />
-              <Route path="customers" element={<Customers />} />
-              <Route path="suppliers" element={<Suppliers />} />
-              <Route path="audit-logs" element={<AuditLogs />} />
-              <Route path="settings" element={<Settings />} />
-              <Route path="ai" element={<AIAssistant />} />
-              
-              {/* Newly implemented routes */}
-              <Route path="users" element={<Users />} />
-              <Route path="barcode" element={<BarcodePrint />} />
-              <Route path="stores" element={<Stores />} />
-              <Route path="branches" element={<Branches />} />
-              <Route path="accounts/out" element={<CashOut />} />
-              <Route path="accounts/in" element={<CashIn />} />
-              <Route path="pharmacy-info" element={<PharmacyInfo />} />
-              <Route path="inventory/add" element={<AddItem />} />
-              <Route path="reports/item-movement" element={<ItemMovement />} />
-              <Route path="suppliers/statement" element={<SupplierStatement />} />
-              <Route path="purchases/return" element={<PurchaseReturn />} />
-              <Route path="customers/statement" element={<CustomerStatement />} />
-              <Route path="pos/return" element={<SalesReturn />} />
-              <Route path="pos/close" element={<CashierClose />} />
-              <Route path="about" element={<About />} />
-            </Route>
-          ) : (
-            <Route path="*" element={<Navigate to="/login" />} />
-          )}
-        </Routes>
-      </div>
+      <BranchProvider>
+        <div dir="rtl" className="min-h-screen bg-gray-50 font-sans text-gray-900">
+          <Routes>
+            <Route 
+              path="/login" 
+              element={!isAuthenticated ? <Login onLogin={() => setIsAuthenticated(true)} /> : <Navigate to="/" />} 
+            />
+            
+            {isAuthenticated ? (
+              <Route path="/" element={<Layout onLogout={() => {
+                localStorage.removeItem('user');
+                setIsAuthenticated(false);
+              }} />}>
+                <Route index element={<Dashboard />} />
+                <Route path="pos" element={<SalesInvoice />} />
+                <Route path="purchases/new" element={<PurchaseInvoice />} />
+                <Route path="inventory" element={<Inventory />} />
+                <Route path="reports" element={<Reports />} />
+                <Route path="customers" element={<Customers />} />
+                <Route path="suppliers" element={<Suppliers />} />
+                <Route path="audit-logs" element={<AuditLogs />} />
+                <Route path="settings" element={<Settings />} />
+                <Route path="ai" element={<AIAssistant />} />
+                
+                {/* Newly implemented routes */}
+                <Route path="users" element={<Users />} />
+                <Route path="barcode" element={<BarcodePrint />} />
+                <Route path="stores" element={<Stores />} />
+                <Route path="branches" element={<Branches />} />
+                <Route path="accounts/out" element={<CashOut />} />
+                <Route path="accounts/in" element={<CashIn />} />
+                <Route path="pharmacy-info" element={<PharmacyInfo />} />
+                <Route path="inventory/add" element={<AddItem />} />
+                <Route path="reports/item-movement" element={<ItemMovement />} />
+                <Route path="suppliers/statement" element={<SupplierStatement />} />
+                <Route path="purchases/return" element={<PurchaseReturn />} />
+                <Route path="customers/statement" element={<CustomerStatement />} />
+                <Route path="pos/return" element={<SalesReturn />} />
+                <Route path="pos/close" element={<CashierClose />} />
+                <Route path="about" element={<About />} />
+              </Route>
+            ) : (
+              <Route path="*" element={<Navigate to="/login" />} />
+            )}
+          </Routes>
+        </div>
+      </BranchProvider>
     </Router>
   );
 }
