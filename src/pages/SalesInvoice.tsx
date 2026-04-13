@@ -261,8 +261,8 @@ export default function SalesInvoice() {
                     <td className="border border-gray-300 p-1">
                       <input 
                         type="number" 
-                        value={item.quantity}
-                        onChange={(e) => updateItemQty(idx, parseInt(e.target.value) || 1)}
+                        value={item.quantity === 0 ? '' : item.quantity}
+                        onChange={(e) => updateItemQty(idx, e.target.value ? parseInt(e.target.value) : 1)}
                         className="w-16 border border-gray-300 px-1 text-center"
                         min="1"
                       />
@@ -272,8 +272,8 @@ export default function SalesInvoice() {
                     <td className="border border-gray-300 p-1">
                       <input 
                         type="number" 
-                        value={item.discountPercent || 0}
-                        onChange={(e) => updateItemDiscount(idx, parseFloat(e.target.value) || 0)}
+                        value={item.discountPercent === 0 ? '' : (item.discountPercent || '')}
+                        onChange={(e) => updateItemDiscount(idx, e.target.value ? parseFloat(e.target.value) : 0)}
                         className="w-12 border border-gray-300 px-1 text-center"
                         min="0" max="100"
                       />
@@ -317,8 +317,8 @@ export default function SalesInvoice() {
             <span>خصم %:</span>
             <input 
               type="number" 
-              value={discountPercent} 
-              onChange={e => setDiscountPercent(parseFloat(e.target.value) || 0)}
+              value={discountPercent === 0 ? '' : discountPercent} 
+              onChange={e => setDiscountPercent(e.target.value ? parseFloat(e.target.value) : 0)}
               className="border border-gray-400 px-1 py-1 w-16 text-center" 
             />
           </div>
@@ -326,8 +326,8 @@ export default function SalesInvoice() {
             <span>خصم قيمة:</span>
             <input 
               type="number" 
-              value={discountValue} 
-              onChange={e => setDiscountValue(parseFloat(e.target.value) || 0)}
+              value={discountValue === 0 ? '' : discountValue} 
+              onChange={e => setDiscountValue(e.target.value ? parseFloat(e.target.value) : 0)}
               className="border border-gray-400 px-1 py-1 w-20 text-center" 
             />
           </div>
@@ -339,8 +339,8 @@ export default function SalesInvoice() {
             <span>م اضافية:</span>
             <input 
               type="number" 
-              value={extraFees} 
-              onChange={e => setExtraFees(parseFloat(e.target.value) || 0)}
+              value={extraFees === 0 ? '' : extraFees} 
+              onChange={e => setExtraFees(e.target.value ? parseFloat(e.target.value) : 0)}
               className="border border-gray-400 px-1 py-1 w-16 text-center" 
             />
           </div>

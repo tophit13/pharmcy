@@ -133,8 +133,8 @@ export default function SalesReturn() {
                           min="0"
                           max={item.quantity}
                           className="w-24 p-1 border border-orange-300 rounded focus:ring-2 focus:ring-orange-500 outline-none"
-                          value={returnItem?.quantity || 0}
-                          onChange={(e) => handleReturnQuantityChange(item.medicineId, parseInt(e.target.value) || 0, item.quantity)}
+                          value={returnItem?.quantity === 0 ? '' : (returnItem?.quantity || '')}
+                          onChange={(e) => handleReturnQuantityChange(item.medicineId, e.target.value ? parseInt(e.target.value) : 0, item.quantity)}
                         />
                       </td>
                     </tr>

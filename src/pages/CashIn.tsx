@@ -73,7 +73,7 @@ export default function CashIn() {
                 min="0"
                 required
                 className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                value={formData.amount}
+                value={formData.amount || ''}
                 onChange={(e) => setFormData({...formData, amount: e.target.value})}
               />
             </div>

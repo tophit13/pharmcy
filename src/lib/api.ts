@@ -102,13 +102,6 @@ export interface DailyAccount {
   cashier: string;
 }
 
-export interface Branch {
-  id: number;
-  name: string;
-  address: string;
-  phone: string;
-}
-
 export interface Store {
   id: number;
   name: string;

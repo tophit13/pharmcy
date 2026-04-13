@@ -194,8 +194,8 @@ export default function AddItem() {
                     min="0"
                     required
                     className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                    value={formData.purchasePrice || ''}
-                    onChange={(e) => setFormData({...formData, purchasePrice: parseFloat(e.target.value)})}
+                    value={formData.purchasePrice === 0 ? '' : formData.purchasePrice}
+                    onChange={(e) => setFormData({...formData, purchasePrice: e.target.value ? parseFloat(e.target.value) : 0})}
                   />
                 </div>
                 <div>
@@ -206,8 +206,8 @@ export default function AddItem() {
                     min="0"
                     required
                     className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                    value={formData.salePrice || ''}
-                    onChange={(e) => setFormData({...formData, salePrice: parseFloat(e.target.value)})}
+                    value={formData.salePrice === 0 ? '' : formData.salePrice}
+                    onChange={(e) => setFormData({...formData, salePrice: e.target.value ? parseFloat(e.target.value) : 0})}
                   />
                 </div>
               </div>
@@ -220,8 +220,8 @@ export default function AddItem() {
                     min="0"
                     required
                     className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                    value={formData.quantity || ''}
-                    onChange={(e) => setFormData({...formData, quantity: parseInt(e.target.value)})}
+                    value={formData.quantity === 0 ? '' : formData.quantity}
+                    onChange={(e) => setFormData({...formData, quantity: e.target.value ? parseInt(e.target.value) : 0})}
                   />
                 </div>
                 <div>
@@ -231,8 +231,8 @@ export default function AddItem() {
                     min="0"
                     required
                     className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                    value={formData.reorderLimit || ''}
-                    onChange={(e) => setFormData({...formData, reorderLimit: parseInt(e.target.value)})}
+                    value={formData.reorderLimit === 0 ? '' : formData.reorderLimit}
+                    onChange={(e) => setFormData({...formData, reorderLimit: e.target.value ? parseInt(e.target.value) : 0})}
                   />
                 </div>
               </div>

@@ -94,8 +94,8 @@ export default function BarcodePrint() {
               min="1"
               max="100"
               className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-              value={quantity}
-              onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+              value={quantity || ''}
+              onChange={(e) => setQuantity(e.target.value ? parseInt(e.target.value) : 1)}
             />
           </div>
 

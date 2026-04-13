@@ -263,8 +263,8 @@ function MedicineModal({ med, onClose, onSave }: { med: Medicine | null, onClose
                 type="number"
                 step="0.01"
                 required
-                value={formData.purchasePrice}
-                onChange={e => setFormData({...formData, purchasePrice: parseFloat(e.target.value)})}
+                value={formData.purchasePrice === 0 ? '' : formData.purchasePrice}
+                onChange={e => setFormData({...formData, purchasePrice: e.target.value ? parseFloat(e.target.value) : 0})}
                 className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-[#2E7D32] focus:border-[#2E7D32] outline-none"
               />
             </div>
@@ -274,8 +274,8 @@ function MedicineModal({ med, onClose, onSave }: { med: Medicine | null, onClose
                 type="number"
                 step="0.01"
                 required
-                value={formData.salePrice}
-                onChange={e => setFormData({...formData, salePrice: parseFloat(e.target.value)})}
+                value={formData.salePrice === 0 ? '' : formData.salePrice}
+                onChange={e => setFormData({...formData, salePrice: e.target.value ? parseFloat(e.target.value) : 0})}
                 className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-[#2E7D32] focus:border-[#2E7D32] outline-none"
               />
             </div>
@@ -284,8 +284,8 @@ function MedicineModal({ med, onClose, onSave }: { med: Medicine | null, onClose
               <input
                 type="number"
                 required
-                value={formData.quantity}
-                onChange={e => setFormData({...formData, quantity: parseInt(e.target.value)})}
+                value={formData.quantity === 0 ? '' : formData.quantity}
+                onChange={e => setFormData({...formData, quantity: e.target.value ? parseInt(e.target.value) : 0})}
                 className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-[#2E7D32] focus:border-[#2E7D32] outline-none"
               />
             </div>
@@ -293,8 +293,8 @@ function MedicineModal({ med, onClose, onSave }: { med: Medicine | null, onClose
               <label className="block text-sm font-medium text-gray-700 mb-1">حد الطلب (النواقص)</label>
               <input
                 type="number"
-                value={formData.reorderLimit || 10}
-                onChange={e => setFormData({...formData, reorderLimit: parseInt(e.target.value)})}
+                value={formData.reorderLimit === 0 ? '' : formData.reorderLimit}
+                onChange={e => setFormData({...formData, reorderLimit: e.target.value ? parseInt(e.target.value) : 0})}
                 className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-[#2E7D32] focus:border-[#2E7D32] outline-none"
               />
             </div>

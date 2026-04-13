@@ -183,8 +183,8 @@ function CustomerModal({ customer, onClose, onSave }: { customer: Customer | nul
             <input
               type="number"
               step="0.01"
-              value={formData.balance}
-              onChange={e => setFormData({...formData, balance: parseFloat(e.target.value)})}
+              value={formData.balance === 0 ? '' : formData.balance}
+              onChange={e => setFormData({...formData, balance: e.target.value ? parseFloat(e.target.value) : 0})}
               className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-[#2E7D32] focus:border-[#2E7D32] outline-none"
             />
           </div>
