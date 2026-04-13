@@ -76,18 +76,20 @@ export default function Settings() {
   };
 
   return (
-    <div className="p-8 space-y-8">
-      <h1 className="text-3xl font-bold text-gray-900">الإعدادات</h1>
+    <div className="p-4 space-y-4">
+      <div className="bg-white p-4 rounded shadow-sm border border-gray-200">
+        <h1 className="text-2xl font-bold text-gray-800">الإعدادات</h1>
+      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="p-6 border-b border-gray-100 bg-gray-50 flex items-center gap-3">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-white rounded shadow-sm border border-gray-200 overflow-hidden">
+          <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center gap-3">
             <Database className="w-6 h-6 text-blue-600" />
             <h2 className="text-xl font-bold text-gray-900">النسخ الاحتياطي والبيانات</h2>
           </div>
           
-          <div className="p-6 space-y-6">
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <div className="p-4 space-y-4">
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded border border-gray-200">
               <div>
                 <h3 className="font-bold text-gray-900">تصدير البيانات</h3>
                 <p className="text-sm text-gray-500 mt-1">حفظ نسخة احتياطية من جميع بيانات الصيدلية في ملف JSON</p>
@@ -95,14 +97,14 @@ export default function Settings() {
               <button
                 onClick={handleExport}
                 disabled={isExporting}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 bg-[#2E7D32] text-white rounded hover:bg-green-800 transition-colors disabled:opacity-50"
               >
                 <Download className="w-5 h-5" />
                 {isExporting ? 'جاري التصدير...' : 'تصدير'}
               </button>
             </div>
 
-            <div className="flex items-center justify-between p-4 bg-red-50 rounded-lg border border-red-100">
+            <div className="flex items-center justify-between p-4 bg-red-50 rounded border border-red-200">
               <div>
                 <h3 className="font-bold text-red-900">استيراد البيانات</h3>
                 <p className="text-sm text-red-700 mt-1">استعادة البيانات من ملف JSON (سيمسح البيانات الحالية)</p>
@@ -117,7 +119,7 @@ export default function Settings() {
                 />
                 <button
                   disabled={isImporting}
-                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 pointer-events-none"
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors disabled:opacity-50 pointer-events-none"
                 >
                   <Upload className="w-5 h-5" />
                   {isImporting ? 'جاري الاستيراد...' : 'استيراد'}
@@ -127,14 +129,14 @@ export default function Settings() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="p-6 border-b border-gray-100 bg-gray-50 flex items-center gap-3">
+        <div className="bg-white rounded shadow-sm border border-gray-200 overflow-hidden">
+          <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center gap-3">
             <Network className="w-6 h-6 text-green-600" />
             <h2 className="text-xl font-bold text-gray-900">الشبكة المحلية</h2>
           </div>
           
-          <div className="p-6 space-y-6">
-            <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+          <div className="p-4 space-y-4">
+            <div className="p-4 bg-green-50 rounded border border-green-200">
               <h3 className="font-bold text-green-900 mb-2">الوصول من أجهزة أخرى</h3>
               <p className="text-sm text-green-800 mb-4">
                 يمكنك فتح هذا التطبيق من أي جهاز آخر (كمبيوتر أو موبايل) متصل بنفس شبكة الـ Wi-Fi عن طريق إدخال الرابط التالي في المتصفح:
@@ -160,14 +162,14 @@ export default function Settings() {
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="p-6 border-b border-gray-100 bg-gray-50 flex items-center gap-3">
+        <div className="bg-white rounded shadow-sm border border-gray-200 overflow-hidden">
+          <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center gap-3">
             <Power className="w-6 h-6 text-purple-600" />
             <h2 className="text-xl font-bold text-gray-900">إعدادات النظام</h2>
           </div>
           
-          <div className="p-6 space-y-6">
-            <div className="flex items-center justify-between p-4 bg-purple-50 rounded-lg border border-purple-200">
+          <div className="p-4 space-y-4">
+            <div className="flex items-center justify-between p-4 bg-purple-50 rounded border border-purple-200">
               <div>
                 <h3 className="font-bold text-purple-900">التشغيل التلقائي</h3>
                 <p className="text-sm text-purple-800 mt-1">تشغيل التطبيق تلقائياً عند بدء تشغيل ويندوز</p>

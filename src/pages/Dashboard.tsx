@@ -18,10 +18,10 @@ export default function Dashboard() {
         return saleTime >= start && saleTime <= end;
       });
         
-      const totalSales = todaySales.reduce((sum, sale) => sum + sale.total, 0);
+      const totalSales = todaySales.reduce((sum, sale) => sum + (sale.netTotal || sale.total || 0), 0);
       
       const allMedicines = await api.getMedicines();
-      const lowStock = allMedicines.filter(m => m.quantity <= 10);
+      const lowStock = allMedicines.filter(m => m.quantity <= (m.reorderLimit || 10));
       
       // Expiring in next 3 months
       const threeMonthsFromNow = new Date();
@@ -44,13 +44,15 @@ export default function Dashboard() {
   if (!stats) return <div className="p-8">جاري التحميل...</div>;
 
   return (
-    <div className="p-8 space-y-8">
-      <h1 className="text-3xl font-bold text-gray-900">نظرة عامة</h1>
+    <div className="p-4 space-y-4">
+      <div className="bg-white p-4 rounded shadow-sm border border-gray-200">
+        <h1 className="text-2xl font-bold text-gray-800">نظرة عامة</h1>
+      </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
-          <div className="p-3 bg-green-100 text-green-600 rounded-lg">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white p-6 rounded shadow-sm border border-gray-200 flex items-center gap-4">
+          <div className="p-3 bg-green-100 text-green-600 rounded">
             <TrendingUp className="w-6 h-6" />
           </div>
           <div>
@@ -59,8 +61,8 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
-          <div className="p-3 bg-blue-100 text-blue-600 rounded-lg">
+        <div className="bg-white p-6 rounded shadow-sm border border-gray-200 flex items-center gap-4">
+          <div className="p-3 bg-blue-100 text-blue-600 rounded">
             <Package className="w-6 h-6" />
           </div>
           <div>
@@ -69,18 +71,18 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
-          <div className="p-3 bg-orange-100 text-orange-600 rounded-lg">
+        <div className="bg-white p-6 rounded shadow-sm border border-gray-200 flex items-center gap-4">
+          <div className="p-3 bg-orange-100 text-orange-600 rounded">
             <AlertTriangle className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-sm text-gray-500 font-medium">نواقص (أقل من 10)</p>
+            <p className="text-sm text-gray-500 font-medium">نواقص (تخطت حد الطلب)</p>
             <p className="text-2xl font-bold text-gray-900">{stats.lowStockCount}</p>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
-          <div className="p-3 bg-red-100 text-red-600 rounded-lg">
+        <div className="bg-white p-6 rounded shadow-sm border border-gray-200 flex items-center gap-4">
+          <div className="p-3 bg-red-100 text-red-600 rounded">
             <Clock className="w-6 h-6" />
           </div>
           <div>
@@ -90,10 +92,10 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Low Stock Alerts */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="p-6 border-b border-gray-100 bg-orange-50">
+        <div className="bg-white rounded shadow-sm border border-gray-200 overflow-hidden">
+          <div className="p-4 border-b border-gray-200 bg-orange-50">
             <h2 className="text-lg font-bold text-orange-800 flex items-center gap-2">
               <AlertTriangle className="w-5 h-5" />
               تنبيهات النواقص
@@ -103,14 +105,14 @@ export default function Dashboard() {
             {stats.lowStock.length === 0 ? (
               <p className="p-6 text-gray-500 text-center">لا توجد نواقص حالياً</p>
             ) : (
-              <ul className="divide-y divide-gray-100">
+              <ul className="divide-y divide-gray-200">
                 {stats.lowStock.slice(0, 5).map((med: Medicine) => (
                   <li key={med.id} className="p-4 flex justify-between items-center hover:bg-gray-50">
                     <div>
-                      <p className="font-medium text-gray-900">{med.name}</p>
+                      <p className="font-bold text-gray-900">{med.name}</p>
                       <p className="text-sm text-gray-500">{med.manufacturer}</p>
                     </div>
-                    <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm font-medium">
+                    <span className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-xs font-bold">
                       الكمية: {med.quantity}
                     </span>
                   </li>
@@ -121,8 +123,8 @@ export default function Dashboard() {
         </div>
 
         {/* Expiring Soon Alerts */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="p-6 border-b border-gray-100 bg-red-50">
+        <div className="bg-white rounded shadow-sm border border-gray-200 overflow-hidden">
+          <div className="p-4 border-b border-gray-200 bg-red-50">
             <h2 className="text-lg font-bold text-red-800 flex items-center gap-2">
               <Clock className="w-5 h-5" />
               أدوية تقترب من انتهاء الصلاحية
@@ -132,14 +134,14 @@ export default function Dashboard() {
             {stats.expiringSoon.length === 0 ? (
               <p className="p-6 text-gray-500 text-center">لا توجد أدوية تقترب من انتهاء الصلاحية</p>
             ) : (
-              <ul className="divide-y divide-gray-100">
+              <ul className="divide-y divide-gray-200">
                 {stats.expiringSoon.slice(0, 5).map((med: Medicine) => (
                   <li key={med.id} className="p-4 flex justify-between items-center hover:bg-gray-50">
                     <div>
-                      <p className="font-medium text-gray-900">{med.name}</p>
+                      <p className="font-bold text-gray-900">{med.name}</p>
                       <p className="text-sm text-gray-500">الكمية: {med.quantity}</p>
                     </div>
-                    <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-medium">
+                    <span className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-xs font-bold">
                       {med.expiryDate}
                     </span>
                   </li>

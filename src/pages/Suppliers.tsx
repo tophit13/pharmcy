@@ -1,63 +1,64 @@
 import React, { useState, useEffect } from 'react';
-import { api, Customer } from '@/lib/api';
+import { api, Supplier } from '@/lib/api';
 import { Plus, Search, Edit, Trash2, X } from 'lucide-react';
 
-export default function Customers() {
+export default function Suppliers() {
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [filteredSuppliers, setFilteredSuppliers] = useState<Supplier[]>([]);
 
-  const loadCustomers = async () => {
-    const data = await api.getCustomers();
-    setCustomers(data);
+  const loadSuppliers = async () => {
+    const data = await api.getSuppliers();
+    setSuppliers(data);
   };
 
   useEffect(() => {
-    loadCustomers();
+    loadSuppliers();
   }, []);
 
   useEffect(() => {
     if (search) {
-      setFilteredCustomers(
-        customers.filter(c => 
-          c.name.toLowerCase().includes(search.toLowerCase()) || 
-          c.phone.includes(search)
+      setFilteredSuppliers(
+        suppliers.filter(s => 
+          s.name.toLowerCase().includes(search.toLowerCase()) || 
+          s.phone.includes(search) ||
+          s.company.toLowerCase().includes(search.toLowerCase())
         )
       );
     } else {
-      setFilteredCustomers(customers);
+      setFilteredSuppliers(suppliers);
     }
-  }, [search, customers]);
+  }, [search, suppliers]);
 
   const handleDelete = async (id: number) => {
-    if (window.confirm('هل أنت متأكد من حذف هذا العميل؟')) {
-      await api.deleteCustomer(id);
-      loadCustomers();
+    if (window.confirm('هل أنت متأكد من حذف هذا المورد؟')) {
+      await api.deleteSupplier(id);
+      loadSuppliers();
     }
   };
 
-  const openEditModal = (customer: Customer) => {
-    setEditingCustomer(customer);
+  const openEditModal = (supplier: Supplier) => {
+    setEditingSupplier(supplier);
     setIsModalOpen(true);
   };
 
   const openAddModal = () => {
-    setEditingCustomer(null);
+    setEditingSupplier(null);
     setIsModalOpen(true);
   };
 
   return (
     <div className="p-4 space-y-4">
       <div className="flex justify-between items-center bg-white p-4 rounded shadow-sm border border-gray-200">
-        <h1 className="text-2xl font-bold text-gray-800">قائمة العملاء</h1>
+        <h1 className="text-2xl font-bold text-gray-800">قائمة الموردين</h1>
         <button
           onClick={openAddModal}
           className="bg-[#2E7D32] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-green-800 transition-colors"
         >
           <Plus className="w-5 h-5" />
-          إضافة عميل جديد
+          إضافة مورد جديد
         </button>
       </div>
 
@@ -65,7 +66,7 @@ export default function Customers() {
         <Search className="w-5 h-5 text-gray-400" />
         <input
           type="text"
-          placeholder="ابحث بالاسم أو رقم الهاتف..."
+          placeholder="ابحث بالاسم، رقم الهاتف، أو الشركة..."
           className="flex-1 outline-none text-gray-700"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -77,35 +78,35 @@ export default function Customers() {
           <thead className="bg-[#2E7D32] text-white">
             <tr>
               <th className="p-3 font-medium">م</th>
-              <th className="p-3 font-medium">اسم العميل</th>
+              <th className="p-3 font-medium">اسم المورد</th>
+              <th className="p-3 font-medium">الشركة</th>
               <th className="p-3 font-medium">رقم الهاتف</th>
-              <th className="p-3 font-medium">الرصيد (عليه)</th>
-              <th className="p-3 font-medium">ملاحظات</th>
+              <th className="p-3 font-medium">الرصيد (له)</th>
               <th className="p-3 font-medium">إجراءات</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {filteredCustomers.map((customer, idx) => (
-              <tr key={customer.id} className="hover:bg-gray-50">
+            {filteredSuppliers.map((supplier, idx) => (
+              <tr key={supplier.id} className="hover:bg-gray-50">
                 <td className="p-3 text-gray-700">{idx + 1}</td>
-                <td className="p-3 font-bold text-gray-900">{customer.name}</td>
-                <td className="p-3 text-gray-700">{customer.phone}</td>
-                <td className="p-3 font-bold text-red-600">{customer.balance?.toFixed(2) || '0.00'}</td>
-                <td className="p-3 text-gray-700">{customer.notes}</td>
+                <td className="p-3 font-bold text-gray-900">{supplier.name}</td>
+                <td className="p-3 text-gray-700">{supplier.company}</td>
+                <td className="p-3 text-gray-700">{supplier.phone}</td>
+                <td className="p-3 font-bold text-red-600">{supplier.balance?.toFixed(2) || '0.00'}</td>
                 <td className="p-3 flex items-center gap-2">
-                  <button onClick={() => openEditModal(customer)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors">
+                  <button onClick={() => openEditModal(supplier)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors">
                     <Edit className="w-4 h-4" />
                   </button>
-                  <button onClick={() => customer.id && handleDelete(customer.id)} className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors">
+                  <button onClick={() => supplier.id && handleDelete(supplier.id)} className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </td>
               </tr>
             ))}
-            {filteredCustomers.length === 0 && (
+            {filteredSuppliers.length === 0 && (
               <tr>
                 <td colSpan={6} className="p-8 text-center text-gray-500">
-                  لا يوجد عملاء مطابقين للبحث
+                  لا يوجد موردين مطابقين للبحث
                 </td>
               </tr>
             )}
@@ -114,32 +115,32 @@ export default function Customers() {
       </div>
 
       {isModalOpen && (
-        <CustomerModal 
-          customer={editingCustomer} 
+        <SupplierModal 
+          supplier={editingSupplier} 
           onClose={() => setIsModalOpen(false)} 
-          onSave={loadCustomers}
+          onSave={loadSuppliers}
         />
       )}
     </div>
   );
 }
 
-function CustomerModal({ customer, onClose, onSave }: { customer: Customer | null, onClose: () => void, onSave: () => void }) {
-  const [formData, setFormData] = useState<Partial<Customer>>(
-    customer || {
+function SupplierModal({ supplier, onClose, onSave }: { supplier: Supplier | null, onClose: () => void, onSave: () => void }) {
+  const [formData, setFormData] = useState<Partial<Supplier>>(
+    supplier || {
       name: '',
       phone: '',
-      notes: '',
+      company: '',
       balance: 0
     }
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (customer?.id) {
-      await api.updateCustomer(customer.id, formData as Customer);
+    if (supplier?.id) {
+      await api.updateSupplier(supplier.id, formData as Supplier);
     } else {
-      await api.addCustomer(formData as Customer);
+      await api.addSupplier(formData as Supplier);
     }
     onSave();
     onClose();
@@ -150,7 +151,7 @@ function CustomerModal({ customer, onClose, onSave }: { customer: Customer | nul
       <div className="bg-white rounded shadow-xl w-full max-w-md overflow-hidden">
         <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
           <h2 className="text-xl font-bold text-gray-900">
-            {customer ? 'تعديل بيانات العميل' : 'إضافة عميل جديد'}
+            {supplier ? 'تعديل بيانات المورد' : 'إضافة مورد جديد'}
           </h2>
           <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600 rounded">
             <X className="w-5 h-5" />
@@ -159,12 +160,22 @@ function CustomerModal({ customer, onClose, onSave }: { customer: Customer | nul
         
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">اسم العميل</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">اسم المورد</label>
             <input
               type="text"
               required
               value={formData.name}
               onChange={e => setFormData({...formData, name: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-[#2E7D32] focus:border-[#2E7D32] outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">الشركة</label>
+            <input
+              type="text"
+              required
+              value={formData.company}
+              onChange={e => setFormData({...formData, company: e.target.value})}
               className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-[#2E7D32] focus:border-[#2E7D32] outline-none"
             />
           </div>
@@ -179,22 +190,13 @@ function CustomerModal({ customer, onClose, onSave }: { customer: Customer | nul
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">الرصيد الافتتاحي (عليه)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">الرصيد الافتتاحي (له)</label>
             <input
               type="number"
               step="0.01"
               value={formData.balance}
               onChange={e => setFormData({...formData, balance: parseFloat(e.target.value)})}
               className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-[#2E7D32] focus:border-[#2E7D32] outline-none"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">ملاحظات</label>
-            <textarea
-              value={formData.notes}
-              onChange={e => setFormData({...formData, notes: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-[#2E7D32] focus:border-[#2E7D32] outline-none"
-              rows={3}
             />
           </div>
           

@@ -35,7 +35,7 @@ export default function Reports() {
       const itemSales: Record<string, { name: string, quantity: number, revenue: number }> = {};
 
       for (const sale of sales) {
-        totalRevenue += sale.total;
+        totalRevenue += sale.netTotal || sale.total || 0;
         for (const item of sale.items) {
           const med = medicinesMap.get(item.medicineId);
           if (med) {
@@ -67,14 +67,14 @@ export default function Reports() {
   if (!reportData) return <div className="p-8">جاري التحميل...</div>;
 
   return (
-    <div className="p-8 space-y-8">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">التقارير</h1>
+    <div className="p-4 space-y-4">
+      <div className="flex justify-between items-center bg-white p-4 rounded shadow-sm border border-gray-200">
+        <h1 className="text-2xl font-bold text-gray-800">التقارير</h1>
         <div className="flex gap-4">
           <select
             value={reportType}
             onChange={(e) => setReportType(e.target.value as 'daily' | 'monthly')}
-            className="px-4 py-2 border border-gray-300 rounded-lg bg-white"
+            className="px-4 py-2 border border-gray-300 rounded bg-white outline-none focus:border-[#2E7D32]"
           >
             <option value="daily">يومي</option>
             <option value="monthly">شهري</option>
@@ -86,49 +86,49 @@ export default function Reports() {
               const val = e.target.value;
               setSelectedDate(reportType === 'daily' ? val : `${val}-01`);
             }}
-            className="px-4 py-2 border border-gray-300 rounded-lg bg-white"
+            className="px-4 py-2 border border-gray-300 rounded bg-white outline-none focus:border-[#2E7D32]"
           />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white p-6 rounded shadow-sm border border-gray-200">
           <p className="text-sm text-gray-500 font-medium mb-2">إجمالي المبيعات</p>
           <p className="text-3xl font-bold text-gray-900">{reportData.totalRevenue.toFixed(2)} ج.م</p>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+        <div className="bg-white p-6 rounded shadow-sm border border-gray-200">
           <p className="text-sm text-gray-500 font-medium mb-2">إجمالي الأرباح</p>
           <p className="text-3xl font-bold text-green-600">{reportData.profit.toFixed(2)} ج.م</p>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+        <div className="bg-white p-6 rounded shadow-sm border border-gray-200">
           <p className="text-sm text-gray-500 font-medium mb-2">عدد الفواتير</p>
           <p className="text-3xl font-bold text-blue-600">{reportData.sales.length}</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="p-6 border-b border-gray-100 bg-gray-50">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-white rounded shadow-sm border border-gray-200 overflow-hidden">
+          <div className="p-4 border-b border-gray-200 bg-gray-50">
             <h2 className="text-lg font-bold text-gray-900">الأدوية الأكثر مبيعاً</h2>
           </div>
-          <div className="p-0">
+          <div className="p-0 overflow-x-auto">
             {reportData.topItems.length === 0 ? (
               <p className="p-6 text-gray-500 text-center">لا توجد مبيعات في هذه الفترة</p>
             ) : (
-              <table className="w-full text-right">
-                <thead className="bg-gray-50 border-b border-gray-100">
+              <table className="w-full text-right text-sm">
+                <thead className="bg-[#2E7D32] text-white">
                   <tr>
-                    <th className="p-4 font-medium text-gray-600">اسم الدواء</th>
-                    <th className="p-4 font-medium text-gray-600">الكمية المباعة</th>
-                    <th className="p-4 font-medium text-gray-600">الإيرادات</th>
+                    <th className="p-3 font-medium">اسم الدواء</th>
+                    <th className="p-3 font-medium">الكمية المباعة</th>
+                    <th className="p-3 font-medium">الإيرادات</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-gray-200">
                   {reportData.topItems.map((item: any, idx: number) => (
                     <tr key={idx} className="hover:bg-gray-50">
-                      <td className="p-4 font-medium text-gray-900">{item.name}</td>
-                      <td className="p-4 text-gray-600">{item.quantity}</td>
-                      <td className="p-4 text-green-600 font-medium">{item.revenue.toFixed(2)} ج.م</td>
+                      <td className="p-3 font-medium text-gray-900">{item.name}</td>
+                      <td className="p-3 text-gray-700">{item.quantity}</td>
+                      <td className="p-3 text-green-700 font-bold">{item.revenue.toFixed(2)} ج.م</td>
                     </tr>
                   ))}
                 </tbody>
@@ -137,15 +137,15 @@ export default function Reports() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="p-6 border-b border-gray-100 bg-gray-50">
+        <div className="bg-white rounded shadow-sm border border-gray-200 overflow-hidden">
+          <div className="p-4 border-b border-gray-200 bg-gray-50">
             <h2 className="text-lg font-bold text-gray-900">سجل الفواتير</h2>
           </div>
           <div className="p-0 max-h-[500px] overflow-y-auto">
             {reportData.sales.length === 0 ? (
               <p className="p-6 text-gray-500 text-center">لا توجد فواتير في هذه الفترة</p>
             ) : (
-              <ul className="divide-y divide-gray-100">
+              <ul className="divide-y divide-gray-200">
                 {reportData.sales.slice().reverse().map((sale: any) => (
                   <li key={sale.id} className="p-4 hover:bg-gray-50">
                     <div className="flex justify-between items-center mb-2">
@@ -156,7 +156,7 @@ export default function Reports() {
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-600">الكاشير: {sale.cashier}</span>
-                      <span className="font-bold text-green-600">{sale.total.toFixed(2)} ج.م</span>
+                      <span className="font-bold text-green-700">{(sale.netTotal || sale.total || 0).toFixed(2)} ج.م</span>
                     </div>
                   </li>
                 ))}

@@ -1,78 +1,168 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { 
-  LayoutDashboard, 
-  ShoppingCart, 
-  Package, 
-  Users, 
-  BarChart3, 
-  Settings as SettingsIcon, 
   LogOut,
-  Bot
+  User,
+  Clock,
+  Calendar,
+  Monitor
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+import { ar } from 'date-fns/locale';
 
 export default function Layout({ onLogout }: { onLogout: () => void }) {
   const location = useLocation();
-  
-  const navItems = [
-    { path: '/', label: 'الرئيسية', icon: LayoutDashboard },
-    { path: '/pos', label: 'نقطة البيع', icon: ShoppingCart },
-    { path: '/inventory', label: 'المخزون', icon: Package },
-    { path: '/customers', label: 'العملاء', icon: Users },
-    { path: '/reports', label: 'التقارير', icon: BarChart3 },
-    { path: '/ai', label: 'المساعد الذكي', icon: Bot },
-    { path: '/settings', label: 'الإعدادات', icon: SettingsIcon },
+  const [time, setTime] = useState(new Date());
+  const [user, setUser] = useState<{username: string, role: string} | null>(null);
+  const [loginTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    const userStr = localStorage.getItem('user');
+    if (userStr) setUser(JSON.parse(userStr));
+    return () => clearInterval(timer);
+  }, []);
+
+  const menus = [
+    {
+      title: 'البيانات العامة',
+      items: [
+        { label: 'بيانات الصيدلية', path: '/pharmacy-info' },
+        { label: 'بيانات المستخدمين', path: '/users' },
+        { label: 'طباعة باركود', path: '/barcode' },
+      ]
+    },
+    {
+      title: 'الأصناف',
+      items: [
+        { label: 'قائمة الأصناف', path: '/inventory' },
+        { label: 'إضافة صنف جديد', path: '/inventory/add' },
+      ]
+    },
+    {
+      title: 'المخازن',
+      items: [
+        { label: 'المخازن الداخلية', path: '/stores' },
+        { label: 'تقرير حركة صنف', path: '/reports/item-movement' },
+      ]
+    },
+    {
+      title: 'الموردين',
+      items: [
+        { label: 'قائمة الموردين', path: '/suppliers' },
+        { label: 'كشف حساب مورد', path: '/suppliers/statement' },
+      ]
+    },
+    {
+      title: 'المشتريات',
+      items: [
+        { label: 'فاتورة شراء', path: '/purchases/new' },
+        { label: 'مرتجع شراء', path: '/purchases/return' },
+      ]
+    },
+    {
+      title: 'العملاء',
+      items: [
+        { label: 'قائمة العملاء', path: '/customers' },
+        { label: 'كشف حساب عميل', path: '/customers/statement' },
+      ]
+    },
+    {
+      title: 'المبيعات',
+      items: [
+        { label: 'فاتورة المبيعات', path: '/pos' },
+        { label: 'مرتجع المبيعات', path: '/pos/return' },
+        { label: 'تقفيل درج الكاشير', path: '/pos/close' },
+      ]
+    },
+    {
+      title: 'الحسابات اليومية',
+      items: [
+        { label: 'صرف نقدية', path: '/accounts/out' },
+        { label: 'توريد نقدية', path: '/accounts/in' },
+      ]
+    },
+    {
+      title: 'رئيسى وفروع',
+      items: [
+        { label: 'فروع المؤسسة', path: '/branches' },
+      ]
+    },
+    {
+      title: 'إطار',
+      items: [
+        { label: 'إعدادات النظام', path: '/settings' },
+        { label: 'عن البرنامج', path: '/about' },
+        { label: 'المساعد الذكي', path: '/ai' },
+        { label: 'سجل النشاطات', path: '/audit-logs' },
+      ]
+    }
   ];
 
+  const currentScreenName = menus.flatMap(m => m.items).find(i => i.path === location.pathname)?.label || 'الرئيسية';
+
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-100">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white shadow-md flex flex-col">
-        <div className="p-6 border-b border-gray-100 flex items-center gap-3">
-          <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-xl">+</span>
-          </div>
-          <h1 className="text-2xl font-bold text-gray-800">صيدليتي</h1>
+    <div className="flex flex-col h-screen overflow-hidden bg-[#f0f0f0] font-sans">
+      {/* Top Menu Bar - Orange */}
+      <header className="bg-[#FF8C00] text-white shadow-md z-10 flex items-center justify-between px-2 h-8 text-sm">
+        <div className="flex items-center space-x-reverse space-x-4">
+          {menus.map((menu, idx) => (
+            <div key={idx} className="relative group cursor-pointer hover:bg-orange-600 px-2 py-1 rounded">
+              <span>{menu.title}</span>
+              <div className="absolute top-full right-0 mt-0 w-48 bg-white text-black shadow-lg border border-gray-300 hidden group-hover:block z-50">
+                {menu.items.map((item, i) => (
+                  <Link 
+                    key={i} 
+                    to={item.path}
+                    className="block px-4 py-2 hover:bg-blue-100 hover:text-blue-900 text-right"
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
-        
-        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = location.pathname === item.path;
-            
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={cn(
-                  "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors",
-                  isActive 
-                    ? "bg-green-50 text-green-700 font-medium" 
-                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                )}
-              >
-                <Icon className="w-5 h-5" />
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
-        </nav>
+        <button onClick={onLogout} className="hover:bg-orange-600 px-2 py-1 rounded flex items-center gap-1">
+          <LogOut className="w-4 h-4" />
+          خروج
+        </button>
+      </header>
 
-        <div className="p-4 border-t border-gray-100">
-          <button
-            onClick={onLogout}
-            className="flex items-center gap-3 px-4 py-3 w-full rounded-lg text-red-600 hover:bg-red-50 transition-colors"
-          >
-            <LogOut className="w-5 h-5" />
-            <span>تسجيل الخروج</span>
-          </button>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto">
+      {/* Main Content Area */}
+      <main className="flex-1 overflow-auto bg-white m-1 border border-gray-300 shadow-inner">
         <Outlet />
       </main>
+
+      {/* Bottom Status Bar */}
+      <footer className="bg-gray-200 border-t border-gray-300 h-8 flex items-center justify-between px-4 text-xs text-gray-700">
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2">
+            <User className="w-4 h-4 text-gray-500" />
+            <span className="font-bold">{user?.username || 'غير معروف'}</span>
+            <span className="text-gray-500">({user?.role === 'admin' ? 'مدير' : 'مستخدم'})</span>
+          </div>
+          <div className="w-px h-4 bg-gray-400"></div>
+          <div className="flex items-center gap-2">
+            <Monitor className="w-4 h-4 text-gray-500" />
+            <span>الشاشة الحالية: <span className="font-bold text-blue-700">{currentScreenName}</span></span>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-gray-500" />
+            <span>وقت الدخول: {format(loginTime, 'hh:mm a', { locale: ar })}</span>
+          </div>
+          <div className="w-px h-4 bg-gray-400"></div>
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-gray-500" />
+            <span>{format(time, 'dd/MM/yyyy')}</span>
+            <span className="font-bold ml-2">{format(time, 'hh:mm:ss a', { locale: ar })}</span>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
