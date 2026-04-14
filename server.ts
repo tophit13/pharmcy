@@ -107,6 +107,17 @@ async function startServer() {
       cashier TEXT,
       branchId INTEGER
     );
+    CREATE TABLE IF NOT EXISTS transfers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      fromStoreId INTEGER,
+      toStoreId INTEGER,
+      items TEXT,
+      status TEXT DEFAULT 'pending',
+      createdAt TEXT,
+      updatedAt TEXT,
+      createdBy TEXT,
+      notes TEXT
+    );
     CREATE TABLE IF NOT EXISTS branches (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT,
@@ -124,6 +135,8 @@ async function startServer() {
   const adminExists = await db.get('SELECT * FROM users WHERE username = ?', ['admin']);
   if (!adminExists) {
     await db.run('INSERT INTO users (username, passwordHash, role) VALUES (?, ?, ?)', ['admin', 'admin', 'admin']);
+  } else if (adminExists.passwordHash !== 'admin') {
+    await db.run('UPDATE users SET passwordHash = ? WHERE username = ?', ['admin', 'admin']);
   }
   const branchExists = await db.get('SELECT * FROM branches WHERE id = 1');
   if (!branchExists) {
@@ -459,6 +472,107 @@ async function startServer() {
     } catch (error: any) {
       await db.exec('ROLLBACK');
       res.status(500).json({ error: 'Transaction failed', details: error.message });
+    }
+  });
+
+  // Transfers
+  app.get('/api/transfers', async (req, res) => {
+    try {
+      const transfers = await db.all('SELECT * FROM transfers ORDER BY createdAt DESC');
+      const parsedTransfers = transfers.map(t => ({ ...t, items: JSON.parse(t.items) }));
+      res.json(parsedTransfers);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.get('/api/transfers/:id', async (req, res) => {
+    try {
+      const transfer = await db.get('SELECT * FROM transfers WHERE id = ?', [req.params.id]);
+      if (transfer) {
+        transfer.items = JSON.parse(transfer.items);
+      }
+      res.json(transfer);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post('/api/transfers', async (req, res) => {
+    const { fromStoreId, toStoreId, items, notes } = req.body;
+    const createdBy = req.headers['x-username'] as string;
+    const createdAt = new Date().toISOString();
+
+    // Validate stock availability
+    for (const item of items) {
+      const medicine = await db.get('SELECT quantity FROM medicines WHERE id = ? AND storeId = ?', [item.medicineId, fromStoreId]);
+      if (!medicine || medicine.quantity < item.quantity) {
+        return res.status(400).json({ error: `Insufficient stock for ${item.name}` });
+      }
+    }
+
+    try {
+      const result = await db.run(
+        'INSERT INTO transfers (fromStoreId, toStoreId, items, status, createdAt, updatedAt, createdBy, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [fromStoreId, toStoreId, JSON.stringify(items), 'pending', createdAt, createdAt, createdBy, notes]
+      );
+      await logAction(createdBy, 'CREATE_TRANSFER', { id: result.lastID, fromStoreId, toStoreId });
+      res.json({ id: result.lastID });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.put('/api/transfers/:id', async (req, res) => {
+    const { status, items, notes } = req.body;
+    const updatedAt = new Date().toISOString();
+    const updatedBy = req.headers['x-username'] as string;
+
+    await db.exec('BEGIN TRANSACTION');
+    try {
+      if (status === 'received') {
+        // Update stock: decrease from source, increase to destination
+        const transfer = await db.get('SELECT * FROM transfers WHERE id = ?', [req.params.id]);
+        const transferItems = JSON.parse(transfer.items);
+
+        for (const item of transferItems) {
+          await db.run('UPDATE medicines SET quantity = quantity - ? WHERE id = ? AND storeId = ?', [item.quantity, item.medicineId, transfer.fromStoreId]);
+          // Check if medicine exists in destination store
+          const existing = await db.get('SELECT id FROM medicines WHERE barcode = ? AND storeId = ?', [item.barcode, transfer.toStoreId]);
+          if (existing) {
+            await db.run('UPDATE medicines SET quantity = quantity + ? WHERE id = ?', [item.quantity, existing.id]);
+          } else {
+            // Create new medicine entry in destination store
+            const sourceMed = await db.get('SELECT * FROM medicines WHERE id = ?', [item.medicineId]);
+            await db.run(
+              'INSERT INTO medicines (code, barcode, name, unit, purchasePrice, salePrice, quantity, reorderLimit, expiryDate, manufacturer, storeId, branchId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+              [sourceMed.code, sourceMed.barcode, sourceMed.name, sourceMed.unit, sourceMed.purchasePrice, sourceMed.salePrice, item.quantity, sourceMed.reorderLimit, item.expiryDate, sourceMed.manufacturer, transfer.toStoreId, null]
+            );
+          }
+        }
+      }
+
+      await db.run(
+        'UPDATE transfers SET status = ?, updatedAt = ?, notes = ? WHERE id = ?',
+        [status, updatedAt, notes, req.params.id]
+      );
+
+      await db.exec('COMMIT');
+      await logAction(updatedBy, 'UPDATE_TRANSFER', { id: req.params.id, status });
+      res.json({ success: true });
+    } catch (error: any) {
+      await db.exec('ROLLBACK');
+      res.status(500).json({ error: 'Transaction failed', details: error.message });
+    }
+  });
+
+  app.delete('/api/transfers/:id', async (req, res) => {
+    try {
+      await db.run('DELETE FROM transfers WHERE id = ?', [req.params.id]);
+      await logAction(req.headers['x-username'] as string, 'DELETE_TRANSFER', { id: req.params.id });
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
     }
   });
 

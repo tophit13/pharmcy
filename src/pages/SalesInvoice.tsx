@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api, Medicine, Customer, SaleItem } from '@/lib/api';
 import { 
   ShoppingCart, 
@@ -33,12 +34,72 @@ export default function SalesInvoice() {
   const [extraFees, setExtraFees] = useState(0);
   const [notes, setNotes] = useState('');
 
+  const navigate = useNavigate();
   const barcodeInputRef = useRef<HTMLInputElement>(null);
+
+  const handleGoHome = () => navigate('/');
+  const handleScrollTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+  const handleFocusBarcode = () => barcodeInputRef.current?.focus();
+  const handleAddBlankLine = () => setItems([...items, {
+      medicineId: 0,
+      name: 'صنف جديد',
+      quantity: 1,
+      price: 0,
+      total: 0,
+      discountPercent: 0,
+      discountValue: 0
+    }]);
+  const handleClose = () => {
+    setItems([]);
+    setBarcode('');
+    navigate('/');
+  };
+  const handlePrint = () => window.print();
+  const handleDrafts = () => alert('ميزة فواتير غير مكتملة قيد التطوير');
+
+  const handleBarcodeScan = (scannedBarcode: string) => {
+    const med = medicines.find(m => m.barcode === scannedBarcode || m.code === scannedBarcode);
+    if (med) {
+      if (med.quantity <= 0) {
+        alert('هذا الصنف غير متوفر في المخزن');
+        return;
+      }
+      addItem(med);
+      setBarcode('');
+    }
+  };
 
   useEffect(() => {
     loadData();
-    // Focus barcode on load
     barcodeInputRef.current?.focus();
+
+    let barcodeBuffer = '';
+    let timeout: NodeJS.Timeout;
+
+    const isPrintableKey = (key: string) => key.length === 1 && !key.includes('Arrow') && !key.includes('Control') && !key.includes('Alt') && !key.includes('Meta');
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const active = document.activeElement as HTMLElement | null;
+      if (active && active.tagName === 'INPUT' && active !== barcodeInputRef.current) return;
+
+      if (e.key === 'Enter' && barcodeBuffer) {
+        handleBarcodeScan(barcodeBuffer);
+        barcodeBuffer = '';
+        return;
+      }
+
+      if (isPrintableKey(e.key)) {
+        barcodeBuffer += e.key;
+      }
+
+      clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        barcodeBuffer = '';
+      }, 100);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   const loadData = async () => {
@@ -161,11 +222,11 @@ export default function SalesInvoice() {
     <div className="flex h-full bg-[#f0f0f0]">
       {/* Right Sidebar (Icons) */}
       <div className="w-16 bg-gray-200 border-l border-gray-300 flex flex-col items-center py-4 gap-4">
-        <button className="p-2 hover:bg-gray-300 rounded" title="الأصناف"><ShoppingCart className="w-8 h-8 text-blue-700" /></button>
-        <button className="p-2 hover:bg-gray-300 rounded" title="المشتريات"><Radio className="w-8 h-8 text-orange-600" /></button>
-        <button className="p-2 bg-gray-300 rounded border-2 border-blue-400" title="المبيعات"><TrendingUp className="w-8 h-8 text-green-700" /></button>
-        <button className="p-2 hover:bg-gray-300 rounded" title="توريد نقدى"><Banknote className="w-8 h-8 text-green-600" /></button>
-        <button className="p-2 hover:bg-gray-300 rounded" title="العملاء"><Users className="w-8 h-8 text-purple-600" /></button>
+        <button type="button" onClick={() => navigate('/inventory')} className="p-2 hover:bg-gray-300 rounded" title="الأصناف"><ShoppingCart className="w-8 h-8 text-blue-700" /></button>
+        <button type="button" onClick={() => navigate('/purchases/new')} className="p-2 hover:bg-gray-300 rounded" title="المشتريات"><Radio className="w-8 h-8 text-orange-600" /></button>
+        <button type="button" onClick={() => navigate('/pos')} className="p-2 bg-gray-300 rounded border-2 border-blue-400" title="المبيعات"><TrendingUp className="w-8 h-8 text-green-700" /></button>
+        <button type="button" onClick={() => navigate('/accounts/in')} className="p-2 hover:bg-gray-300 rounded" title="توريد نقدى"><Banknote className="w-8 h-8 text-green-600" /></button>
+        <button type="button" onClick={() => navigate('/customers')} className="p-2 hover:bg-gray-300 rounded" title="العملاء"><Users className="w-8 h-8 text-purple-600" /></button>
       </div>
 
       {/* Main Content */}
@@ -366,37 +427,37 @@ export default function SalesInvoice() {
 
       {/* Left Sidebar (Actions) */}
       <div className="w-28 bg-gray-200 border-r border-gray-300 flex flex-col p-2 gap-2 text-xs font-bold">
-        <button onClick={() => setItems([])} className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded">
+        <button type="button" onClick={() => { setItems([]); setBarcode(''); setDiscountPercent(0); setDiscountValue(0); setExtraFees(0); setNotes(''); }} className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded">
           <FilePlus className="w-6 h-6 text-blue-600" /> جديد
         </button>
-        <button onClick={handleSave} className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded">
+        <button type="button" onClick={handleSave} className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded">
           <Save className="w-6 h-6 text-green-600" /> حفظ
         </button>
-        <button className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded">
+        <button type="button" onClick={handleGoHome} className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded">
           <Home className="w-6 h-6 text-gray-600" /> الرئيسية
         </button>
-        <button className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded">
+        <button type="button" onClick={handleScrollTop} className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded">
           <ArrowUpCircle className="w-6 h-6 text-orange-600" /> تعلى الفاتورة
         </button>
-        <button className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded">
+        <button type="button" onClick={handleDrafts} className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded">
           <ListOrdered className="w-6 h-6 text-purple-600" /> فواتير مترلى
         </button>
-        <button className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded">
+        <button type="button" onClick={handleFocusBarcode} className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded">
           <PlusCircle className="w-6 h-6 text-green-600" /> إضافة صنف
         </button>
-        <button className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded">
+        <button type="button" onClick={handleAddBlankLine} className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded">
           <CornerDownLeft className="w-6 h-6 text-blue-600" /> سطر جديد
         </button>
-        <button onClick={() => items.length > 0 && removeItem(items.length - 1)} className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded">
+        <button type="button" onClick={() => items.length > 0 && removeItem(items.length - 1)} className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded">
           <Trash2 className="w-6 h-6 text-red-600" /> حذف سطر
         </button>
-        <button className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded">
+        <button type="button" onClick={handleDrafts} className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded">
           <Clock className="w-6 h-6 text-gray-600" /> فواتير غير مكتملة
         </button>
-        <button className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded">
+        <button type="button" onClick={handleClose} className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded">
           <XCircle className="w-6 h-6 text-red-600" /> إغلاق
         </button>
-        <button className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded mt-auto">
+        <button type="button" onClick={handlePrint} className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded mt-auto">
           <Printer className="w-6 h-6 text-gray-800" /> طباعة الاستخدام
         </button>
       </div>

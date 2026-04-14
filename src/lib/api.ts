@@ -54,6 +54,26 @@ export interface Purchase {
   branchId?: number;
 }
 
+export interface TransferItem {
+  medicineId: number;
+  barcode: string;
+  name: string;
+  quantity: number;
+  expiryDate: string;
+}
+
+export interface Transfer {
+  id?: number;
+  fromStoreId: number;
+  toStoreId: number;
+  items: TransferItem[];
+  status: 'pending' | 'sent' | 'received' | 'rejected';
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+  notes?: string;
+}
+
 export interface Branch {
   id: number;
   name: string;
@@ -164,6 +184,39 @@ export const api = {
   },
   deleteMedicine: async (id: number) => {
     const res = await fetch(`${API_URL}/medicines/${id}`, { 
+      method: 'DELETE',
+      headers: getHeaders()
+    });
+    return res.json();
+  },
+
+  // Transfers
+  getTransfers: async (): Promise<Transfer[]> => {
+    const res = await fetch(`${API_URL}/transfers`, { headers: getHeaders() });
+    return res.json();
+  },
+  getTransfer: async (id: number): Promise<Transfer> => {
+    const res = await fetch(`${API_URL}/transfers/${id}`, { headers: getHeaders() });
+    return res.json();
+  },
+  addTransfer: async (transfer: Omit<Transfer, 'id' | 'createdAt' | 'updatedAt' | 'createdBy'>) => {
+    const res = await fetch(`${API_URL}/transfers`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(transfer)
+    });
+    return res.json();
+  },
+  updateTransfer: async (id: number, updates: Partial<Transfer>) => {
+    const res = await fetch(`${API_URL}/transfers/${id}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(updates)
+    });
+    return res.json();
+  },
+  deleteTransfer: async (id: number) => {
+    const res = await fetch(`${API_URL}/transfers/${id}`, {
       method: 'DELETE',
       headers: getHeaders()
     });
