@@ -6,6 +6,9 @@ import cors from 'cors';
 import ip from 'ip';
 import path from 'path';
 import fs from 'fs';
+import multer from 'multer';
+
+const upload = multer({ dest: 'uploads/' });
 
 async function startServer() {
   const app = express();
@@ -352,6 +355,103 @@ async function startServer() {
       const medicines = await db.all('SELECT * FROM medicines');
       res.json(medicines);
     } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post('/api/medicines/import-db', upload.single('file'), async (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+    
+    try {
+      const uploadedDbPath = req.file.path;
+      const uploadedDb = await open({
+        filename: uploadedDbPath,
+        driver: sqlite3.Database
+      });
+      
+      // Check if medicines table exists
+      const tables = await uploadedDb.all("SELECT name FROM sqlite_master WHERE type='table'");
+      const tableNames = tables.map(t => t.name);
+      
+      let targetTable = 'medicines';
+      if (!tableNames.includes('medicines')) {
+        // Try to find a table that might be medicines
+        if (tableNames.includes('medicine')) targetTable = 'medicine';
+        else if (tableNames.includes('Items')) targetTable = 'Items';
+        else if (tableNames.includes('items')) targetTable = 'items';
+        else if (tableNames.includes('Products')) targetTable = 'Products';
+        else if (tableNames.includes('products')) targetTable = 'products';
+        else {
+          await uploadedDb.close();
+          fs.unlinkSync(uploadedDbPath);
+          return res.status(400).json({ error: `لم يتم العثور على جدول الأدوية. الجداول المتاحة: ${tableNames.join(', ')}` });
+        }
+      }
+
+      const importedMedicines = await uploadedDb.all(`SELECT * FROM ${targetTable}`);
+      await uploadedDb.close();
+      fs.unlinkSync(uploadedDbPath);
+
+      let importedCount = 0;
+      let errors = [];
+      await db.exec('BEGIN TRANSACTION');
+      try {
+        for (const med of importedMedicines) {
+          try {
+            // Map common column names
+            let code = med.code || med.Code || med.id || '';
+            if (!code) {
+              code = 'MED-' + Math.floor(Math.random() * 1000000);
+            }
+            const barcode = med.barcode || med.Barcode || med.code || '';
+            const name = med.name || med.Name || med.item_name || med.ItemName || 'بدون اسم';
+            const unit = med.unit || med.Unit || '';
+            const purchasePrice = parseFloat(med.purchasePrice || med.PurchasePrice || med.cost || med.Cost || 0);
+            const salePrice = parseFloat(med.salePrice || med.SalePrice || med.price || med.Price || 0);
+            const quantity = parseInt(med.quantity || med.Quantity || med.qty || med.Qty || 0);
+            const reorderLimit = parseInt(med.reorderLimit || med.ReorderLimit || 0);
+            const expiryDate = med.expiryDate || med.ExpiryDate || med.exp_date || '';
+            const manufacturer = med.manufacturer || med.Manufacturer || med.company || '';
+
+            try {
+              await db.run(
+                'INSERT INTO medicines (code, barcode, name, unit, purchasePrice, salePrice, quantity, reorderLimit, expiryDate, manufacturer, storeId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [code, barcode, name, unit, purchasePrice, salePrice, quantity, reorderLimit, expiryDate, manufacturer, med.storeId || 1]
+              );
+            } catch (insertErr: any) {
+              if (insertErr.message.includes('UNIQUE constraint failed')) {
+                code = code + '-' + Math.floor(Math.random() * 10000);
+                await db.run(
+                  'INSERT INTO medicines (code, barcode, name, unit, purchasePrice, salePrice, quantity, reorderLimit, expiryDate, manufacturer, storeId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                  [code, barcode, name, unit, purchasePrice, salePrice, quantity, reorderLimit, expiryDate, manufacturer, med.storeId || 1]
+                );
+              } else {
+                throw insertErr;
+              }
+            }
+            importedCount++;
+          } catch (insertErr: any) {
+            errors.push(`خطأ في الصنف ${med.name || 'غير معروف'}: ${insertErr.message}`);
+          }
+        }
+        await db.exec('COMMIT');
+        await logAction(req.headers['x-username'] as string, 'IMPORT_MEDICINES_DB', { count: importedCount, errors: errors.length });
+        
+        if (errors.length > 0 && importedCount === 0) {
+           res.status(400).json({ error: 'فشل استيراد جميع الأصناف', details: errors.slice(0, 5) });
+        } else {
+           res.json({ success: true, count: importedCount, errors: errors.slice(0, 5) });
+        }
+      } catch (err) {
+        await db.exec('ROLLBACK');
+        throw err;
+      }
+    } catch (e: any) {
+      if (req.file && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
       res.status(500).json({ error: e.message });
     }
   });

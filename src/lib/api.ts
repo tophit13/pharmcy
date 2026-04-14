@@ -154,6 +154,25 @@ export const api = {
     });
     return res.json();
   },
+  importMedicinesDb: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const headers = getHeaders();
+    // Remove Content-Type so browser can set it with the boundary for FormData
+    delete (headers as any)['Content-Type'];
+    
+    const res = await fetch(`${API_URL}/medicines/import-db`, {
+      method: 'POST',
+      headers,
+      body: formData
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error(errorData.error || 'Failed to import database');
+    }
+    return res.json();
+  },
   updateMedicine: async (id: number, med: Medicine) => {
     const res = await fetch(`${API_URL}/medicines/${id}`, {
       method: 'PUT',

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { api, Medicine } from '@/lib/api';
-import { Plus, Search, Edit, Trash2, AlertTriangle, X } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, AlertTriangle, X, Upload } from 'lucide-react';
 import { useBranch } from '@/contexts/BranchContext';
 
 export default function Inventory() {
@@ -9,6 +9,8 @@ export default function Inventory() {
   const [editingMed, setEditingMed] = useState<Medicine | null>(null);
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [filteredMedicines, setFilteredMedicines] = useState<Medicine[]>([]);
+  const [isImporting, setIsImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { selectedBranch, branches } = useBranch();
 
   const loadMedicines = async () => {
@@ -55,6 +57,33 @@ export default function Inventory() {
     setIsModalOpen(true);
   };
 
+  const handleImportDb = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!window.confirm('سيتم استيراد الأصناف من قاعدة البيانات المحددة. هل تريد المتابعة؟')) {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    setIsImporting(true);
+    try {
+      const result = await api.importMedicinesDb(file);
+      let msg = `تم استيراد ${result.count} صنف بنجاح.`;
+      if (result.errors && result.errors.length > 0) {
+        msg += `\n\nيوجد بعض الأخطاء:\n${result.errors.join('\n')}`;
+      }
+      alert(msg);
+      loadMedicines();
+    } catch (error: any) {
+      console.error('Import error:', error);
+      alert('حدث خطأ أثناء الاستيراد: ' + (error.message || 'خطأ غير معروف'));
+    } finally {
+      setIsImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   const getBranchName = (branchId?: number) => {
     if (!branchId) return '-';
     return branches.find(b => b.id === branchId)?.name || 'غير معروف';
@@ -64,13 +93,30 @@ export default function Inventory() {
     <div className="p-4 space-y-4">
       <div className="flex justify-between items-center bg-white p-4 rounded shadow-sm border border-gray-200">
         <h1 className="text-2xl font-bold text-gray-800">قائمة الأصناف {selectedBranch ? `(${selectedBranch.name})` : ''}</h1>
-        <button
-          onClick={openAddModal}
-          className="bg-[#2E7D32] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-green-800 transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          إضافة صنف جديد
-        </button>
+        <div className="flex items-center gap-2">
+          <input 
+            type="file" 
+            accept=".db,.sqlite" 
+            className="hidden" 
+            ref={fileInputRef}
+            onChange={handleImportDb}
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isImporting}
+            className="bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-blue-700 transition-colors disabled:opacity-50"
+          >
+            <Upload className="w-5 h-5" />
+            {isImporting ? 'جاري الاستيراد...' : 'استيراد من قاعدة بيانات'}
+          </button>
+          <button
+            onClick={openAddModal}
+            className="bg-[#2E7D32] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-green-800 transition-colors"
+          >
+            <Plus className="w-5 h-5" />
+            إضافة صنف جديد
+          </button>
+        </div>
       </div>
 
       <div className="bg-white p-3 rounded shadow-sm border border-gray-200 flex items-center gap-3">
