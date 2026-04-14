@@ -24,11 +24,8 @@ export default function POS() {
     let barcode = '';
     let timeout: NodeJS.Timeout;
 
-    const isPrintableKey = (key: string) => key.length === 1 && !key.includes('Arrow') && !key.includes('Shift') && !key.includes('Control') && !key.includes('Alt') && !key.includes('Meta');
-
     const handleKeyDown = (e: KeyboardEvent) => {
-      const activeElement = document.activeElement as HTMLElement | null;
-      if (activeElement && activeElement.tagName === 'INPUT' && activeElement !== searchInputRef.current) {
+      if (document.activeElement?.tagName === 'INPUT' && document.activeElement !== searchInputRef.current) {
         return;
       }
 
@@ -38,7 +35,7 @@ export default function POS() {
         return;
       }
 
-      if (isPrintableKey(e.key)) {
+      if (e.key !== 'Shift') {
         barcode += e.key;
       }
 
@@ -67,13 +64,11 @@ export default function POS() {
   }, [search, medicines, selectedBranch]);
 
   const handleBarcodeScanned = (scannedBarcode: string) => {
-    const med = medicines.find(m => m.barcode === scannedBarcode && (!selectedBranch?.id || m.branchId === selectedBranch.id));
+    const med = medicines.find(m => m.barcode === scannedBarcode && m.branchId === selectedBranch?.id);
     if (med) {
       addToCart(med);
       setSearch('');
-      setSearchResults([]);
     } else {
-      setSearchResults([]);
       alert('لم يتم العثور على الدواء بهذا الباركود في هذا الفرع');
     }
   };
