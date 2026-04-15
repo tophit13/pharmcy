@@ -8,7 +8,7 @@
   "main": "electron/main.cjs",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build && tsc server.ts --outDir dist --module CommonJS --esModuleInterop --skipLibCheck && mv dist/server.js dist/server.cjs",
+    "build": "vite build && tsc server.ts --outDir dist --module CommonJS --esModuleInterop --skipLibCheck && node -e \"require('fs').renameSync('dist/server.js', 'dist/server.cjs')\"",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
