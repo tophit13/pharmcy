@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import TitleBar from './components/TitleBar';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -29,6 +30,8 @@ import CashierClose from './pages/CashierClose';
 import About from './pages/About';
 import ReceiveOrder from './pages/ReceiveOrder';
 import TransferStock from './pages/TransferStock';
+import Alerts from './pages/Alerts';
+import GlobalAlerts from './pages/GlobalAlerts';
 
 import { BranchProvider } from './contexts/BranchContext';
 
@@ -45,8 +48,10 @@ export default function App() {
   return (
     <Router>
       <BranchProvider>
-        <div dir="rtl" className="min-h-screen bg-gray-50 font-sans text-gray-900">
-          <Routes>
+        <div dir="rtl" className="min-h-screen bg-gray-50 font-sans text-gray-900 flex flex-col">
+          <TitleBar />
+          <div className="flex-1 overflow-auto">
+            <Routes>
             <Route 
               path="/login" 
               element={!isAuthenticated ? <Login onLogin={() => setIsAuthenticated(true)} /> : <Navigate to="/" />} 
@@ -79,6 +84,8 @@ export default function App() {
                 <Route path="inventory/add" element={<AddItem />} />
                 <Route path="inventory/receive" element={<ReceiveOrder />} />
                 <Route path="inventory/transfer" element={<TransferStock />} />
+                <Route path="inventory/alerts" element={<Alerts />} />
+                <Route path="reports/global-alerts" element={<GlobalAlerts />} />
                 <Route path="reports/item-movement" element={<ItemMovement />} />
                 <Route path="suppliers/statement" element={<SupplierStatement />} />
                 <Route path="purchases/return" element={<PurchaseReturn />} />
@@ -91,6 +98,7 @@ export default function App() {
               <Route path="*" element={<Navigate to="/login" />} />
             )}
           </Routes>
+          </div>
         </div>
       </BranchProvider>
     </Router>

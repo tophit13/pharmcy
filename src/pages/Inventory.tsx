@@ -8,6 +8,7 @@ export default function Inventory() {
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isPriceModalOpen, setIsPriceModalOpen] = useState(false);
   const [editingMed, setEditingMed] = useState<Medicine | null>(null);
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [filteredMedicines, setFilteredMedicines] = useState<Medicine[]>([]);
@@ -18,7 +19,14 @@ export default function Inventory() {
     setMedicines(data);
   };
 
+  const [userRole, setUserRole] = useState<string>('');
+
   useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      setUserRole(user.role);
+    }
     loadMedicines();
   }, []);
 
@@ -30,10 +38,12 @@ export default function Inventory() {
     }
 
     if (search) {
+      const lowerSearch = search.toLowerCase();
       result = result.filter(m => 
-        m.name.toLowerCase().includes(search.toLowerCase()) || 
+        m.name.toLowerCase().includes(lowerSearch) || 
         m.barcode.includes(search) ||
-        (m.code && m.code.includes(search))
+        (m.code && m.code.toLowerCase().includes(lowerSearch)) ||
+        (m.manufacturer && m.manufacturer.toLowerCase().includes(lowerSearch))
       );
     }
     
@@ -66,36 +76,38 @@ export default function Inventory() {
     <div className="p-4 space-y-4">
       <div className="flex justify-between items-center bg-white p-4 rounded shadow-sm border border-gray-200">
         <h1 className="text-2xl font-bold text-gray-800">قائمة الأصناف {selectedBranch ? `(${selectedBranch.name})` : ''}</h1>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setIsImportModalOpen(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-blue-700 transition-colors"
-          >
-            <Upload className="w-5 h-5" />
-            استيراد من قاعدة بيانات (SQLite)
-          </button>
-          <button
-            onClick={() => setIsImportModalOpen(true)}
-            className="bg-purple-600 text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-purple-700 transition-colors"
-          >
-            <FileSpreadsheet className="w-5 h-5" />
-            استيراد أدوية من Excel/CSV
-          </button>
-          <button
-            onClick={openAddModal}
-            className="bg-[#2E7D32] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-green-800 transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-            إضافة صنف جديد
-          </button>
-        </div>
+        {userRole !== 'cashier' && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsImportModalOpen(true)}
+              className="bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-blue-700 transition-colors"
+            >
+              <Upload className="w-5 h-5" />
+              استيراد من قاعدة بيانات (SQLite)
+            </button>
+            <button
+              onClick={() => setIsImportModalOpen(true)}
+              className="bg-purple-600 text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-purple-700 transition-colors"
+            >
+              <FileSpreadsheet className="w-5 h-5" />
+              استيراد أدوية من Excel/CSV
+            </button>
+            <button
+              onClick={openAddModal}
+              className="bg-[#2E7D32] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-green-800 transition-colors"
+            >
+              <Plus className="w-5 h-5" />
+              إضافة صنف جديد
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="bg-white p-3 rounded shadow-sm border border-gray-200 flex items-center gap-3">
         <Search className="w-5 h-5 text-gray-400" />
         <input
           type="text"
-          placeholder="ابحث بالاسم، الباركود، أو كود الصنف..."
+          placeholder="ابحث بالاسم، الباركود، كود الصنف، أو الشركة..."
           className="flex-1 outline-none text-gray-700"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -117,6 +129,7 @@ export default function Inventory() {
               <th className="p-3 font-medium">حد الطلب</th>
               <th className="p-3 font-medium">تاريخ الصلاحية</th>
               <th className="p-3 font-medium">الشركة</th>
+              <th className="p-3 font-medium">تاريخ تحديث السعر</th>
               <th className="p-3 font-medium">إجراءات</th>
             </tr>
           </thead>
@@ -153,13 +166,30 @@ export default function Inventory() {
                     </span>
                   </td>
                   <td className="p-3 text-gray-700">{med.manufacturer}</td>
+                  <td className="p-3 text-gray-500 text-xs" dir="ltr">
+                    {med.lastPriceUpdate ? new Date(med.lastPriceUpdate).toLocaleString('ar-EG') : '-'}
+                  </td>
                   <td className="p-3 flex items-center gap-2">
-                    <button onClick={() => openEditModal(med)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors">
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => med.id && handleDelete(med.id)} className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {userRole !== 'cashier' && (
+                      <>
+                        <button 
+                          onClick={() => {
+                            setEditingMed(med);
+                            setIsPriceModalOpen(true);
+                          }} 
+                          className="p-1.5 text-green-600 hover:bg-green-50 rounded transition-colors"
+                          title="تحديث السعر"
+                        >
+                          <span className="font-bold text-xs">تحديث السعر</span>
+                        </button>
+                        <button onClick={() => openEditModal(med)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors">
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => med.id && handleDelete(med.id)} className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               );
@@ -190,6 +220,99 @@ export default function Inventory() {
           branchId={selectedBranch?.id}
         />
       )}
+
+      {isPriceModalOpen && editingMed && (
+        <PriceUpdateModal
+          med={editingMed}
+          onClose={() => setIsPriceModalOpen(false)}
+          onSave={loadMedicines}
+        />
+      )}
+    </div>
+  );
+}
+
+function PriceUpdateModal({ med, onClose, onSave }: { med: Medicine, onClose: () => void, onSave: () => void }) {
+  const [purchasePrice, setPurchasePrice] = useState(med.purchasePrice);
+  const [salePrice, setSalePrice] = useState(med.salePrice);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    try {
+      await api.updateMedicine(med.id!, {
+        ...med,
+        purchasePrice,
+        salePrice
+      });
+      alert('تم تحديث السعر بنجاح ✓');
+      onSave();
+      onClose();
+    } catch (error) {
+      alert('حدث خطأ أثناء تحديث السعر');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded shadow-xl w-full max-w-md overflow-hidden">
+        <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+          <h2 className="text-xl font-bold text-gray-900">تحديث سعر الصنف</h2>
+          <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600 rounded">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div className="bg-gray-50 p-3 rounded border border-gray-200 mb-4">
+            <p className="font-bold text-gray-800">{med.name}</p>
+            <p className="text-sm text-gray-500">الباركود: {med.barcode}</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">سعر الشراء الجديد</label>
+            <input
+              type="number"
+              step="0.01"
+              required
+              value={purchasePrice}
+              onChange={e => setPurchasePrice(parseFloat(e.target.value) || 0)}
+              className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-[#2E7D32] focus:border-[#2E7D32] outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">سعر البيع الجديد</label>
+            <input
+              type="number"
+              step="0.01"
+              required
+              value={salePrice}
+              onChange={e => setSalePrice(parseFloat(e.target.value) || 0)}
+              className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-[#2E7D32] focus:border-[#2E7D32] outline-none"
+            />
+          </div>
+          
+          <div className="pt-4 flex justify-end gap-3 border-t border-gray-200 mt-6">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+            >
+              إلغاء
+            </button>
+            <button
+              type="submit"
+              disabled={isSaving}
+              className="px-4 py-2 text-white bg-[#2E7D32] hover:bg-green-800 rounded transition-colors disabled:opacity-50"
+            >
+              {isSaving ? 'جاري الحفظ...' : 'حفظ التحديث'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

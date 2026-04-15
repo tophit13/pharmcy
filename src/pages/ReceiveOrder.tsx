@@ -7,6 +7,7 @@ import { Search, Plus, Trash2, Save, PackagePlus, AlertTriangle } from 'lucide-r
 interface PendingItem extends Medicine {
   receivedQuantity: number;
   newPurchasePrice: number;
+  newSalePrice: number;
   newExpiryDate: string;
 }
 
@@ -26,7 +27,14 @@ export default function ReceiveOrder() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const quantityInputRef = useRef<HTMLInputElement>(null);
 
+  const [userRole, setUserRole] = useState<string>('');
+
   useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      setUserRole(user.role);
+    }
     loadSuppliers();
     // Auto focus search input on mount
     if (searchInputRef.current) {
@@ -118,6 +126,7 @@ export default function ReceiveOrder() {
         ...med,
         receivedQuantity: 1,
         newPurchasePrice: med.purchasePrice || 0,
+        newSalePrice: med.salePrice || 0,
         newExpiryDate: med.expiryDate || new Date().toISOString().split('T')[0]
       }, ...pendingItems]);
     }
@@ -165,6 +174,8 @@ export default function ReceiveOrder() {
         productId: item.id,
         quantity: item.receivedQuantity,
         purchasePrice: item.newPurchasePrice,
+        newPurchasePrice: item.newPurchasePrice,
+        newSalePrice: item.newSalePrice,
         expiryDate: item.newExpiryDate
       }));
 
@@ -332,7 +343,8 @@ export default function ReceiveOrder() {
                   <tr>
                     <th className="p-3 font-bold">الصنف</th>
                     <th className="p-3 font-bold w-24">الكمية المستلمة</th>
-                    <th className="p-3 font-bold w-24">سعر الشراء</th>
+                    <th className="p-3 font-bold w-24">سعر الشراء الجديد</th>
+                    <th className="p-3 font-bold w-24">سعر البيع الجديد</th>
                     <th className="p-3 font-bold w-32">تاريخ الصلاحية</th>
                     <th className="p-3 font-bold">الإجمالي</th>
                     <th className="p-3 font-bold w-16 text-center">حذف</th>
@@ -341,7 +353,7 @@ export default function ReceiveOrder() {
                 <tbody className="divide-y divide-gray-100">
                   {pendingItems.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="p-8 text-center text-gray-500">
+                      <td colSpan={7} className="p-8 text-center text-gray-500">
                         لم يتم إضافة أصناف بعد. ابدأ بمسح الباركود أو البحث.
                       </td>
                     </tr>
@@ -350,7 +362,10 @@ export default function ReceiveOrder() {
                       <tr key={item.id} className="hover:bg-gray-50">
                         <td className="p-3">
                           <div className="font-bold text-gray-800">{item.name}</div>
-                          <div className="text-xs text-gray-500">المخزون الحالي: {item.quantity} {item.unit}</div>
+                          <div className="text-xs text-gray-500">
+                            المخزون الحالي: {item.quantity} {item.unit} | 
+                            شراء: {item.purchasePrice} | بيع: {item.salePrice}
+                          </div>
                         </td>
                         <td className="p-3">
                           <input
@@ -366,9 +381,21 @@ export default function ReceiveOrder() {
                             type="number"
                             step="0.01"
                             min="0"
+                            disabled={userRole === 'cashier'}
                             value={item.newPurchasePrice || ''}
                             onChange={(e) => updatePendingItem(item.id!, 'newPurchasePrice', parseFloat(e.target.value) || 0)}
-                            className="w-full px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-green-600 outline-none text-center"
+                            className="w-full px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-green-600 outline-none text-center disabled:bg-gray-100"
+                          />
+                        </td>
+                        <td className="p-3">
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            disabled={userRole === 'cashier'}
+                            value={item.newSalePrice || ''}
+                            onChange={(e) => updatePendingItem(item.id!, 'newSalePrice', parseFloat(e.target.value) || 0)}
+                            className="w-full px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-green-600 outline-none text-center disabled:bg-gray-100"
                           />
                         </td>
                         <td className="p-3">

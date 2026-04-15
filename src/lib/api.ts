@@ -12,6 +12,7 @@ export interface Medicine {
   manufacturer: string;
   storeId?: number;
   branchId?: number;
+  lastPriceUpdate?: string;
 }
 
 export interface SaleItem {

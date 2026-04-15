@@ -8,6 +8,7 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
+    frame: false, // Hide the default Windows toolbar
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -19,6 +20,23 @@ function createWindow() {
 
   win.setMenuBarVisibility(false);
   win.loadURL('http://localhost:3000');
+
+  // Handle custom title bar actions
+  ipcMain.on('window-minimize', () => {
+    win.minimize();
+  });
+
+  ipcMain.on('window-maximize', () => {
+    if (win.isMaximized()) {
+      win.unmaximize();
+    } else {
+      win.maximize();
+    }
+  });
+
+  ipcMain.on('window-close', () => {
+    win.close();
+  });
 }
 
 // Auto-Start IPC Handlers

@@ -49,6 +49,7 @@ export default function Layout({ onLogout }: { onLogout: () => void }) {
         { label: 'المخازن الداخلية', path: '/stores' },
         { label: 'استلام طلبية', path: '/inventory/receive' },
         { label: 'نقل مخزون', path: '/inventory/transfer' },
+        { label: 'تنبيهات المخزون', path: '/inventory/alerts' },
         { label: 'تقرير حركة صنف', path: '/reports/item-movement' },
       ]
     },
@@ -92,6 +93,7 @@ export default function Layout({ onLogout }: { onLogout: () => void }) {
       title: 'رئيسى وفروع',
       items: [
         { label: 'فروع المؤسسة', path: '/branches' },
+        { label: 'تنبيهات شاملة (جميع الفروع)', path: '/reports/global-alerts' },
       ]
     },
     {

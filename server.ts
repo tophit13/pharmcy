@@ -50,7 +50,8 @@ async function startServer() {
       expiryDate TEXT,
       manufacturer TEXT,
       storeId INTEGER,
-      branchId INTEGER
+      branchId INTEGER,
+      lastPriceUpdate TEXT
     );
     CREATE TABLE IF NOT EXISTS sales (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -173,6 +174,13 @@ async function startServer() {
   const storeExists = await db.get('SELECT * FROM stores WHERE id = 1');
   if (!storeExists) {
     await db.run('INSERT INTO stores (name, branchId) VALUES (?, ?)', ['المخزن الرئيسي', 1]);
+  }
+
+  // Add lastPriceUpdate column if it doesn't exist
+  try {
+    await db.exec('ALTER TABLE medicines ADD COLUMN lastPriceUpdate TEXT');
+  } catch (e) {
+    // Column might already exist, ignore error
   }
 
   const logAction = async (username: string | undefined, action: string, details: any) => {
@@ -420,11 +428,24 @@ async function startServer() {
           [receiptId, item.productId, item.quantity, item.purchasePrice, item.expiryDate]
         );
 
-        // Update product stock and optionally purchase price/expiry date
-        await db.run(
-          'UPDATE medicines SET quantity = quantity + ?, purchasePrice = ?, expiryDate = ? WHERE id = ?',
-          [item.quantity, item.purchasePrice, item.expiryDate, item.productId]
-        );
+        // Determine prices
+        const newPurchasePrice = item.newPurchasePrice !== undefined ? item.newPurchasePrice : item.purchasePrice;
+        const newSalePrice = item.newSalePrice !== undefined ? item.newSalePrice : undefined;
+        const now = new Date().toISOString();
+
+        // Update product stock and optionally purchase price/sale price/expiry date
+        let updateQuery = 'UPDATE medicines SET quantity = quantity + ?, purchasePrice = ?, expiryDate = ?, lastPriceUpdate = ?';
+        let updateParams: any[] = [item.quantity, newPurchasePrice, item.expiryDate, now];
+
+        if (newSalePrice !== undefined) {
+          updateQuery += ', salePrice = ?';
+          updateParams.push(newSalePrice);
+        }
+
+        updateQuery += ' WHERE id = ?';
+        updateParams.push(item.productId);
+
+        await db.run(updateQuery, updateParams);
       }
 
       await db.exec('COMMIT');
@@ -803,10 +824,18 @@ async function startServer() {
 
   app.put('/api/medicines/:id', async (req, res) => {
     try {
-      const { code, barcode, name, unit, purchasePrice, salePrice, quantity, reorderLimit, expiryDate, manufacturer, storeId } = req.body;
+      const { code, barcode, name, unit, purchasePrice, salePrice, quantity, reorderLimit, expiryDate, manufacturer, storeId, lastPriceUpdate } = req.body;
+      
+      // Check if prices changed
+      const oldMed = await db.get('SELECT purchasePrice, salePrice FROM medicines WHERE id = ?', [req.params.id]);
+      let newLastPriceUpdate = lastPriceUpdate;
+      if (oldMed && (oldMed.purchasePrice !== purchasePrice || oldMed.salePrice !== salePrice)) {
+        newLastPriceUpdate = new Date().toISOString();
+      }
+
       await db.run(
-        'UPDATE medicines SET code = ?, barcode = ?, name = ?, unit = ?, purchasePrice = ?, salePrice = ?, quantity = ?, reorderLimit = ?, expiryDate = ?, manufacturer = ?, storeId = ? WHERE id = ?',
-        [code, barcode, name, unit, purchasePrice, salePrice, quantity, reorderLimit, expiryDate, manufacturer, storeId || 1, req.params.id]
+        'UPDATE medicines SET code = ?, barcode = ?, name = ?, unit = ?, purchasePrice = ?, salePrice = ?, quantity = ?, reorderLimit = ?, expiryDate = ?, manufacturer = ?, storeId = ?, lastPriceUpdate = ? WHERE id = ?',
+        [code, barcode, name, unit, purchasePrice, salePrice, quantity, reorderLimit, expiryDate, manufacturer, storeId || 1, newLastPriceUpdate, req.params.id]
       );
       await logAction(req.headers['x-username'] as string, 'UPDATE_MEDICINE', { id: req.params.id, name });
       res.json({ success: true });
