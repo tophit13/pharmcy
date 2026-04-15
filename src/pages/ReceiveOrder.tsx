@@ -274,7 +274,7 @@ export default function ReceiveOrder() {
               className="w-full bg-green-700 text-white py-3 rounded font-bold hover:bg-green-800 transition-colors disabled:opacity-50 flex justify-center items-center gap-2"
             >
               <Save className="w-5 h-5" />
-              {isSaving ? 'جاري الحفظ...' : 'حفظ الطلبية (F5)'}
+              {isSaving ? 'جاري الاستلام...' : 'استلام طلبية (F5)'}
             </button>
           </div>
         </div>

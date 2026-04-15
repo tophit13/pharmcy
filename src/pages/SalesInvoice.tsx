@@ -156,9 +156,6 @@ export default function SalesInvoice() {
 
   const updateItemQty = (index: number, qty: number) => {
     if (qty <= 0) return;
-    // We don't have the full medicine object here, so we can't easily check max quantity without fetching.
-    // But we can let the user type, and if it fails on backend, it fails.
-    // Ideally we'd store maxQty in SaleItem. Let's assume we just update it.
     const newItems = [...items];
     newItems[index].quantity = qty;
     newItems[index].total = qty * newItems[index].price;
@@ -214,10 +211,8 @@ export default function SalesInvoice() {
       setNotes('');
       searchInputRef.current?.focus();
       
-      // Check for low stock items after sale
       const lowStock = await api.getLowStockProducts(selectedBranch.id);
       if (lowStock.length > 0) {
-        // We could show a toast here, but for now just log or let the dashboard handle it
         console.log('Low stock items detected:', lowStock.length);
       }
       
@@ -229,48 +224,48 @@ export default function SalesInvoice() {
   };
 
   return (
-    <div className="flex h-full bg-[#f0f0f0]" dir="rtl">
+    <div className="flex h-full bg-[#e5e7eb]" dir="rtl">
       {/* Right Sidebar (Icons) */}
-      <div className="w-16 bg-gray-200 border-l border-gray-300 flex flex-col items-center py-4 gap-4">
-        <button className="p-2 hover:bg-gray-300 rounded" title="الأصناف"><ShoppingCart className="w-8 h-8 text-blue-700" /></button>
-        <button className="p-2 hover:bg-gray-300 rounded" title="المشتريات"><Radio className="w-8 h-8 text-orange-600" /></button>
-        <button className="p-2 bg-gray-300 rounded border-2 border-blue-400" title="المبيعات"><TrendingUp className="w-8 h-8 text-green-700" /></button>
-        <button className="p-2 hover:bg-gray-300 rounded" title="توريد نقدى"><Banknote className="w-8 h-8 text-green-600" /></button>
-        <button className="p-2 hover:bg-gray-300 rounded" title="العملاء"><Users className="w-8 h-8 text-purple-600" /></button>
+      <div className="w-16 bg-[#f3f4f6] border-l border-gray-300 flex flex-col items-center py-4 gap-4 shrink-0">
+        <button className="p-2 hover:bg-gray-200 rounded" title="الأصناف"><ShoppingCart className="w-7 h-7 text-blue-700" /></button>
+        <button className="p-2 hover:bg-gray-200 rounded" title="المشتريات"><Radio className="w-7 h-7 text-orange-600" /></button>
+        <button className="p-2 bg-gray-200 rounded border border-blue-400" title="المبيعات"><TrendingUp className="w-7 h-7 text-green-700" /></button>
+        <button className="p-2 hover:bg-gray-200 rounded" title="توريد نقدى"><Banknote className="w-7 h-7 text-green-600" /></button>
+        <button className="p-2 hover:bg-gray-200 rounded" title="العملاء"><Users className="w-7 h-7 text-purple-600" /></button>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col p-2 gap-2 overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Section */}
-        <div className="bg-white border border-gray-300 p-2 text-sm flex flex-wrap gap-4 items-center">
-          <div className="flex items-center gap-2 border border-gray-300 p-1 rounded">
-            <label className="flex items-center gap-1 cursor-pointer"><input type="radio" name="type" checked={invoiceType === 'cash'} onChange={() => setInvoiceType('cash')} /> كاش</label>
-            <label className="flex items-center gap-1 cursor-pointer"><input type="radio" name="type" checked={invoiceType === 'visa'} onChange={() => setInvoiceType('visa')} /> فيزا</label>
-            <label className="flex items-center gap-1 cursor-pointer"><input type="radio" name="type" checked={invoiceType === 'credit'} onChange={() => setInvoiceType('credit')} /> آجل</label>
+        <div className="bg-white border-b border-gray-300 p-2 text-sm flex flex-wrap gap-4 items-center shadow-sm z-10">
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-1 cursor-pointer"><input type="radio" name="type" checked={invoiceType === 'cash'} onChange={() => setInvoiceType('cash')} className="w-4 h-4 text-blue-600" /> كاش</label>
+            <label className="flex items-center gap-1 cursor-pointer"><input type="radio" name="type" checked={invoiceType === 'visa'} onChange={() => setInvoiceType('visa')} className="w-4 h-4 text-blue-600" /> فيزا</label>
+            <label className="flex items-center gap-1 cursor-pointer"><input type="radio" name="type" checked={invoiceType === 'credit'} onChange={() => setInvoiceType('credit')} className="w-4 h-4 text-blue-600" /> آجل</label>
           </div>
           
-          <div className="flex items-center gap-2">
-            <span className="font-bold">مخزن البيع:</span>
-            <select className="border border-gray-300 rounded px-2 py-1 bg-gray-50">
+          <div className="flex items-center gap-2 mr-4">
+            <span className="text-gray-600">مخزن البيع:</span>
+            <select className="border border-gray-300 rounded px-2 py-1 bg-white min-w-[120px] focus:outline-none focus:border-blue-500">
               <option>المخزن الرئيسي</option>
             </select>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 mr-4">
             <span className="font-bold text-blue-800 text-lg">{selectedBranch?.name || 'الفرع الرئيسي'}</span>
           </div>
 
           <div className="flex items-center gap-2 mr-auto">
-            <span className="font-bold">البائع:</span>
-            <select className="border border-gray-300 rounded px-2 py-1 bg-gray-50">
+            <span className="text-gray-600">البائع:</span>
+            <select className="border border-gray-300 rounded px-2 py-1 bg-white min-w-[120px] focus:outline-none focus:border-blue-500">
               <option>{JSON.parse(localStorage.getItem('user') || '{}').username || 'مدير النظام'}</option>
             </select>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="font-bold">العميل:</span>
+            <span className="text-gray-600">العميل:</span>
             <select 
-              className="border border-gray-300 rounded px-2 py-1 bg-gray-50 min-w-[150px]"
+              className="border border-gray-300 rounded px-2 py-1 bg-white min-w-[150px] focus:outline-none focus:border-blue-500"
               value={selectedCustomer}
               onChange={(e) => setSelectedCustomer(e.target.value ? Number(e.target.value) : '')}
             >
@@ -283,14 +278,14 @@ export default function SalesInvoice() {
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 p-2 rounded flex items-center gap-2 text-sm font-bold">
+          <div className="bg-red-50 border-b border-red-200 text-red-700 p-2 flex items-center gap-2 text-sm font-bold">
             <AlertTriangle className="w-5 h-5" />
             {error}
           </div>
         )}
 
         {/* Barcode / Search Input */}
-        <div className="bg-white border border-gray-300 p-2 relative">
+        <div className="bg-white border-b border-gray-300 p-2 relative z-10">
           <div className="relative flex items-center">
             <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
               <Search className="h-5 w-5 text-gray-400" />
@@ -300,7 +295,7 @@ export default function SalesInvoice() {
               type="text"
               value={searchQuery}
               onChange={handleSearchChange}
-              className="w-full pl-3 pr-10 py-2 border-2 border-blue-400 rounded text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-yellow-50"
+              className="w-full pl-3 pr-10 py-2 border border-blue-400 rounded text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-[#fdfdfd]"
               placeholder="امسح الباركود أو ابحث باسم الصنف (F2)..."
             />
             {isSearching && (
@@ -312,7 +307,7 @@ export default function SalesInvoice() {
 
           {/* Search Results Dropdown */}
           {searchResults.length > 0 && searchQuery && (
-            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded shadow-lg max-h-60 overflow-y-auto">
+            <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded shadow-lg max-h-60 overflow-y-auto">
               {searchResults.map(med => (
                 <div 
                   key={med.id} 
@@ -336,18 +331,18 @@ export default function SalesInvoice() {
         </div>
 
         {/* Grid */}
-        <div className="flex-1 bg-white border border-gray-300 overflow-auto">
+        <div className="flex-1 bg-white overflow-auto relative">
           <table className="w-full text-right text-sm border-collapse">
-            <thead className="bg-[#2E7D32] text-white sticky top-0">
+            <thead className="bg-[#2E7D32] text-white sticky top-0 z-10">
               <tr>
-                <th className="border border-gray-400 p-1">م</th>
-                <th className="border border-gray-400 p-1">اسم الصنف</th>
-                <th className="border border-gray-400 p-1">الكمية</th>
-                <th className="border border-gray-400 p-1">سعر البيع</th>
-                <th className="border border-gray-400 p-1">ن الخصم</th>
-                <th className="border border-gray-400 p-1">قيمة ق الخصم</th>
-                <th className="border border-gray-400 p-1">قيمة بعد الخصم</th>
-                <th className="border border-gray-400 p-1">حذف</th>
+                <th className="border border-gray-400 p-2 font-medium w-12 text-center">م</th>
+                <th className="border border-gray-400 p-2 font-medium">اسم الصنف</th>
+                <th className="border border-gray-400 p-2 font-medium w-24 text-center">الكمية</th>
+                <th className="border border-gray-400 p-2 font-medium w-24 text-center">سعر البيع</th>
+                <th className="border border-gray-400 p-2 font-medium w-24 text-center">ن الخصم</th>
+                <th className="border border-gray-400 p-2 font-medium w-32 text-center">قيمة ق الخصم</th>
+                <th className="border border-gray-400 p-2 font-medium w-32 text-center">قيمة بعد الخصم</th>
+                <th className="border border-gray-400 p-2 font-medium w-16 text-center">حذف</th>
               </tr>
             </thead>
             <tbody>
@@ -357,31 +352,31 @@ export default function SalesInvoice() {
 
                 return (
                   <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                    <td className="border border-gray-300 p-1 text-center">{idx + 1}</td>
-                    <td className="border border-gray-300 p-1 font-bold text-blue-800">{item.name}</td>
+                    <td className="border border-gray-300 p-2 text-center text-gray-600">{idx + 1}</td>
+                    <td className="border border-gray-300 p-2 font-bold text-blue-800">{item.name}</td>
                     <td className="border border-gray-300 p-1">
                       <input 
                         type="number" 
                         value={item.quantity === 0 ? '' : item.quantity}
                         onChange={(e) => updateItemQty(idx, e.target.value ? parseInt(e.target.value) : 1)}
-                        className="w-16 border border-gray-300 px-1 text-center"
+                        className="w-full border border-gray-300 px-2 py-1 text-center focus:outline-none focus:border-blue-500 rounded-sm"
                         min="1"
                       />
                     </td>
-                    <td className="border border-gray-300 p-1">{item.price.toFixed(2)}</td>
+                    <td className="border border-gray-300 p-2 text-center">{item.price.toFixed(2)}</td>
                     <td className="border border-gray-300 p-1">
                       <input 
                         type="number" 
                         value={item.discountPercent === 0 ? '' : (item.discountPercent || '')}
                         onChange={(e) => updateItemDiscount(idx, e.target.value ? parseFloat(e.target.value) : 0)}
-                        className="w-12 border border-gray-300 px-1 text-center"
+                        className="w-full border border-gray-300 px-2 py-1 text-center focus:outline-none focus:border-blue-500 rounded-sm"
                         min="0" max="100"
                       />
                     </td>
-                    <td className="border border-gray-300 p-1">{itemTotalBeforeDiscount.toFixed(2)}</td>
-                    <td className="border border-gray-300 p-1 font-bold">{itemNetTotal.toFixed(2)}</td>
+                    <td className="border border-gray-300 p-2 text-center">{itemTotalBeforeDiscount.toFixed(2)}</td>
+                    <td className="border border-gray-300 p-2 text-center font-bold text-gray-800">{itemNetTotal.toFixed(2)}</td>
                     <td className="border border-gray-300 p-1 text-center">
-                      <button onClick={() => removeItem(idx)} className="text-red-500 hover:text-red-700">
+                      <button onClick={() => removeItem(idx)} className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </td>
@@ -389,16 +384,16 @@ export default function SalesInvoice() {
                 );
               })}
               {/* Empty rows to fill space */}
-              {Array.from({ length: Math.max(0, 10 - items.length) }).map((_, i) => (
+              {Array.from({ length: Math.max(0, 15 - items.length) }).map((_, i) => (
                 <tr key={`empty-${i}`}>
-                  <td className="border border-gray-300 p-1 h-8"></td>
-                  <td className="border border-gray-300 p-1"></td>
-                  <td className="border border-gray-300 p-1"></td>
-                  <td className="border border-gray-300 p-1"></td>
-                  <td className="border border-gray-300 p-1"></td>
-                  <td className="border border-gray-300 p-1"></td>
-                  <td className="border border-gray-300 p-1"></td>
-                  <td className="border border-gray-300 p-1"></td>
+                  <td className="border border-gray-200 p-2 h-10"></td>
+                  <td className="border border-gray-200 p-2"></td>
+                  <td className="border border-gray-200 p-2"></td>
+                  <td className="border border-gray-200 p-2"></td>
+                  <td className="border border-gray-200 p-2"></td>
+                  <td className="border border-gray-200 p-2"></td>
+                  <td className="border border-gray-200 p-2"></td>
+                  <td className="border border-gray-200 p-2"></td>
                 </tr>
               ))}
             </tbody>
@@ -406,96 +401,106 @@ export default function SalesInvoice() {
         </div>
 
         {/* Totals Row */}
-        <div className="bg-gray-200 border border-gray-300 p-2 text-sm flex flex-wrap gap-4 items-center font-bold">
-          <div className="flex items-center gap-1">
-            <span>عدد الأصناف:</span>
-            <span className="bg-white border border-gray-400 px-2 py-1 min-w-[40px] text-center">{items.length}</span>
+        <div className="bg-[#e5e7eb] border-t border-gray-300 p-2 text-sm flex flex-wrap gap-4 items-center shrink-0">
+          <div className="flex items-center gap-2">
+            <span className="text-gray-700">عدد الأصناف:</span>
+            <span className="bg-white border border-gray-300 px-3 py-1 min-w-[50px] text-center font-bold rounded-sm">{items.length}</span>
           </div>
-          <div className="flex items-center gap-1">
-            <span>الإجمالى ق الخصم:</span>
-            <span className="bg-white border border-gray-400 px-2 py-1 min-w-[80px] text-center">{totalBeforeDiscount.toFixed(2)}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-700">الإجمالى ق الخصم:</span>
+            <span className="bg-white border border-gray-300 px-3 py-1 min-w-[80px] text-center font-bold rounded-sm">{totalBeforeDiscount.toFixed(2)}</span>
           </div>
-          <div className="flex items-center gap-1">
-            <span>خصم %:</span>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-700">خصم %:</span>
             <input 
               type="number" 
               value={discountPercent === 0 ? '' : discountPercent} 
               onChange={e => setDiscountPercent(e.target.value ? parseFloat(e.target.value) : 0)}
-              className="border border-gray-400 px-1 py-1 w-16 text-center" 
+              className="border border-gray-300 px-2 py-1 w-16 text-center focus:outline-none focus:border-blue-500 rounded-sm" 
             />
           </div>
-          <div className="flex items-center gap-1">
-            <span>خصم قيمة:</span>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-700">خصم قيمة:</span>
             <input 
               type="number" 
               value={discountValue === 0 ? '' : discountValue} 
               onChange={e => setDiscountValue(e.target.value ? parseFloat(e.target.value) : 0)}
-              className="border border-gray-400 px-1 py-1 w-20 text-center" 
+              className="border border-gray-300 px-2 py-1 w-20 text-center focus:outline-none focus:border-blue-500 rounded-sm" 
             />
           </div>
-          <div className="flex items-center gap-1">
-            <span>خ.أصناف:</span>
-            <span className="bg-white border border-gray-400 px-2 py-1 min-w-[60px] text-center">{itemsDiscount.toFixed(2)}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-700">خ.أصناف:</span>
+            <span className="bg-white border border-gray-300 px-3 py-1 min-w-[60px] text-center font-bold rounded-sm">{itemsDiscount.toFixed(2)}</span>
           </div>
-          <div className="flex items-center gap-1">
-            <span>م اضافية:</span>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-700">م اضافية:</span>
             <input 
               type="number" 
               value={extraFees === 0 ? '' : extraFees} 
               onChange={e => setExtraFees(e.target.value ? parseFloat(e.target.value) : 0)}
-              className="border border-gray-400 px-1 py-1 w-16 text-center" 
+              className="border border-gray-300 px-2 py-1 w-16 text-center focus:outline-none focus:border-blue-500 rounded-sm" 
             />
           </div>
-          <div className="flex items-center gap-1 flex-1">
-            <span>ملاحظات:</span>
+          <div className="flex items-center gap-2 flex-1">
+            <span className="text-gray-700">ملاحظات:</span>
             <input 
               type="text" 
               value={notes} 
               onChange={e => setNotes(e.target.value)}
-              className="border border-gray-400 px-2 py-1 w-full" 
+              className="border border-gray-300 px-3 py-1 w-full focus:outline-none focus:border-blue-500 rounded-sm" 
             />
           </div>
         </div>
 
         {/* Bottom Net Total */}
-        <div className="flex justify-end">
-          <div className="bg-yellow-200 border-2 border-yellow-500 p-2 flex items-center gap-4 rounded">
+        <div className="flex justify-between items-end shrink-0 pt-2">
+          <div className="bg-[#FFEB3B] border-2 border-[#FBC02D] px-6 py-3 flex items-center gap-4 rounded-md shadow-sm">
             <span className="text-xl font-bold text-gray-800">الصافى المطلوب:</span>
-            <span className="text-3xl font-bold text-red-600">{netTotal.toFixed(2)}</span>
+            <span className="text-4xl font-bold text-red-600">{netTotal.toFixed(2)}</span>
           </div>
         </div>
       </div>
 
       {/* Left Sidebar (Actions) */}
-      <div className="w-28 bg-gray-200 border-r border-gray-300 flex flex-col p-2 gap-2 text-xs font-bold">
-        <button onClick={() => setItems([])} className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded">
+      <div className="w-28 bg-[#f3f4f6] border-r border-gray-300 flex flex-col p-2 gap-2 text-xs font-bold shrink-0 overflow-y-auto">
+        <button onClick={() => setItems([])} className="bg-white border border-gray-300 hover:bg-blue-50 p-2 flex flex-col items-center gap-1 rounded shadow-sm transition-colors">
           <FilePlus className="w-6 h-6 text-blue-600" /> جديد
         </button>
-        <button onClick={handleSave} disabled={isSaving} className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded disabled:opacity-50">
+        <button onClick={handleSave} disabled={isSaving} className="bg-white border border-gray-300 hover:bg-green-50 p-2 flex flex-col items-center gap-1 rounded shadow-sm transition-colors disabled:opacity-50">
           <Save className="w-6 h-6 text-green-600" /> {isSaving ? 'جاري...' : 'حفظ (F5)'}
         </button>
-        <button className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded">
+        <button className="bg-white border border-gray-300 hover:bg-gray-100 p-2 flex flex-col items-center gap-1 rounded shadow-sm transition-colors">
           <Home className="w-6 h-6 text-gray-600" /> الرئيسية
         </button>
-        <button className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded">
+        <button className="bg-white border border-gray-300 hover:bg-orange-50 p-2 flex flex-col items-center gap-1 rounded shadow-sm transition-colors">
           <ArrowUpCircle className="w-6 h-6 text-orange-600" /> تعلى الفاتورة
         </button>
-        <button className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded">
+        <button className="bg-white border border-gray-300 hover:bg-purple-50 p-2 flex flex-col items-center gap-1 rounded shadow-sm transition-colors">
           <ListOrdered className="w-6 h-6 text-purple-600" /> فواتير مترلى
         </button>
-        <button className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded">
+        <button className="bg-white border border-gray-300 hover:bg-green-50 p-2 flex flex-col items-center gap-1 rounded shadow-sm transition-colors">
           <PlusCircle className="w-6 h-6 text-green-600" /> إضافة صنف
         </button>
-        <button className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded">
+        <button onClick={() => {
+          setItems([...items, {
+            medicineId: 0,
+            name: '',
+            quantity: 1,
+            price: 0,
+            total: 0,
+            discountPercent: 0,
+            discountValue: 0
+          }]);
+        }} className="bg-white border border-gray-300 hover:bg-blue-50 p-2 flex flex-col items-center gap-1 rounded shadow-sm transition-colors">
           <CornerDownLeft className="w-6 h-6 text-blue-600" /> سطر جديد
         </button>
-        <button onClick={() => items.length > 0 && removeItem(items.length - 1)} className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded">
+        <button onClick={() => items.length > 0 && removeItem(items.length - 1)} className="bg-white border border-gray-300 hover:bg-red-50 p-2 flex flex-col items-center gap-1 rounded shadow-sm transition-colors">
           <Trash2 className="w-6 h-6 text-red-600" /> حذف سطر
         </button>
-        <button className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded">
+        <button className="bg-white border border-gray-300 hover:bg-gray-100 p-2 flex flex-col items-center gap-1 rounded shadow-sm transition-colors">
           <Clock className="w-6 h-6 text-gray-600" /> فواتير غير مكتملة
         </button>
-        <button className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded mt-auto">
+        <button className="bg-white border border-gray-300 hover:bg-red-50 p-2 flex flex-col items-center gap-1 rounded shadow-sm transition-colors mt-auto">
           <Printer className="w-6 h-6 text-gray-800" /> طباعة
         </button>
       </div>
