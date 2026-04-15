@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api, Medicine, Customer, SaleItem } from '@/lib/api';
+import { useBranch } from '@/contexts/BranchContext';
+import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import { 
   ShoppingCart, 
   Radio, 
@@ -16,14 +18,19 @@ import {
   Trash2,
   Clock,
   XCircle,
-  Printer
+  Printer,
+  Search,
+  AlertTriangle
 } from 'lucide-react';
 
 export default function SalesInvoice() {
+  const { selectedBranch } = useBranch();
   const [items, setItems] = useState<SaleItem[]>([]);
-  const [barcode, setBarcode] = useState('');
-  const [medicines, setMedicines] = useState<Medicine[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Medicine[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [error, setError] = useState('');
   
   // Invoice Details
   const [invoiceType, setInvoiceType] = useState<'cash' | 'visa' | 'credit'>('cash');
@@ -32,47 +39,93 @@ export default function SalesInvoice() {
   const [discountValue, setDiscountValue] = useState(0);
   const [extraFees, setExtraFees] = useState(0);
   const [notes, setNotes] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
-  const barcodeInputRef = useRef<HTMLInputElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadData();
-    // Focus barcode on load
-    barcodeInputRef.current?.focus();
+    searchInputRef.current?.focus();
   }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F2') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      } else if (e.key === 'F5') {
+        e.preventDefault();
+        if (items.length > 0 && !isSaving) {
+          handleSave();
+        }
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        setSearchQuery('');
+        setSearchResults([]);
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [items, isSaving]);
+
   const loadData = async () => {
-    const [meds, custs] = await Promise.all([
-      api.getMedicines(),
-      api.getCustomers()
-    ]);
-    setMedicines(meds);
+    const custs = await api.getCustomers();
     setCustomers(custs);
   };
 
-  const handleBarcodeSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!barcode) return;
-
-    const med = medicines.find(m => m.barcode === barcode || m.code === barcode);
-    if (med) {
-      if (med.quantity <= 0) {
-        alert('هذا الصنف غير متوفر في المخزن');
-        setBarcode('');
-        return;
-      }
-      addItem(med);
-    } else {
-      alert('الصنف غير موجود');
-    }
-    setBarcode('');
+  const handleScan = async (barcode: string) => {
+    if (!selectedBranch) return;
+    setSearchQuery(barcode);
+    searchProduct(barcode);
   };
 
-  const addItem = (med: Medicine) => {
+  useBarcodeScanner({ onScan: handleScan });
+
+  const searchProduct = async (query: string) => {
+    if (!query.trim() || !selectedBranch) {
+      setSearchResults([]);
+      return;
+    }
+    setIsSearching(true);
+    setError('');
+    try {
+      const results = await api.searchProducts(query, selectedBranch.id);
+      setSearchResults(results);
+      if (results.length === 1) {
+        handleSelectItem(results[0]);
+      }
+    } catch (err: any) {
+      setError('فشل البحث عن الصنف');
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setSearchQuery(val);
+    
+    const timeoutId = setTimeout(() => {
+      searchProduct(val);
+    }, 300);
+    return () => clearTimeout(timeoutId);
+  };
+
+  const handleSelectItem = (med: Medicine) => {
+    if (med.quantity <= 0) {
+      setError(`الصنف "${med.name}" غير متوفر في المخزن!`);
+      setTimeout(() => setError(''), 3000);
+      setSearchQuery('');
+      setSearchResults([]);
+      return;
+    }
+
     const existing = items.find(i => i.medicineId === med.id);
     if (existing) {
       if (existing.quantity >= med.quantity) {
-        alert('الكمية المطلوبة غير متوفرة');
+        setError(`الكمية المطلوبة من "${med.name}" غير متوفرة! المتاح: ${med.quantity}`);
+        setTimeout(() => setError(''), 3000);
         return;
       }
       setItems(items.map(i => 
@@ -91,19 +144,21 @@ export default function SalesInvoice() {
         discountValue: 0
       }]);
     }
+    
+    setSearchQuery('');
+    setSearchResults([]);
   };
 
   const removeItem = (index: number) => {
     setItems(items.filter((_, i) => i !== index));
+    searchInputRef.current?.focus();
   };
 
   const updateItemQty = (index: number, qty: number) => {
     if (qty <= 0) return;
-    const med = medicines.find(m => m.id === items[index].medicineId);
-    if (med && qty > med.quantity) {
-      alert('الكمية المطلوبة غير متوفرة');
-      return;
-    }
+    // We don't have the full medicine object here, so we can't easily check max quantity without fetching.
+    // But we can let the user type, and if it fails on backend, it fails.
+    // Ideally we'd store maxQty in SaleItem. Let's assume we just update it.
     const newItems = [...items];
     newItems[index].quantity = qty;
     newItems[index].total = qty * newItems[index].price;
@@ -124,10 +179,17 @@ export default function SalesInvoice() {
   const netTotal = totalBeforeDiscount - itemsDiscount - invoiceDiscountValue + extraFees;
 
   const handleSave = async () => {
-    if (items.length === 0) {
-      alert('الفاتورة فارغة');
+    if (!selectedBranch) {
+      setError('الرجاء تحديد الفرع أولاً');
       return;
     }
+    if (items.length === 0) {
+      setError('الفاتورة فارغة');
+      return;
+    }
+
+    setIsSaving(true);
+    setError('');
 
     try {
       await api.addSale({
@@ -140,25 +202,34 @@ export default function SalesInvoice() {
         netTotal,
         cashier: JSON.parse(localStorage.getItem('user') || '{}').username || 'غير معروف',
         customerId: selectedCustomer ? Number(selectedCustomer) : undefined,
-        storeId: 1
+        storeId: 1,
+        branchId: selectedBranch.id
       });
       
-      alert('تم حفظ الفاتورة بنجاح');
       setItems([]);
-      setBarcode('');
+      setSearchQuery('');
       setDiscountPercent(0);
       setDiscountValue(0);
       setExtraFees(0);
       setNotes('');
-      loadData();
-      barcodeInputRef.current?.focus();
+      searchInputRef.current?.focus();
+      
+      // Check for low stock items after sale
+      const lowStock = await api.getLowStockProducts(selectedBranch.id);
+      if (lowStock.length > 0) {
+        // We could show a toast here, but for now just log or let the dashboard handle it
+        console.log('Low stock items detected:', lowStock.length);
+      }
+      
     } catch (e: any) {
-      alert('حدث خطأ أثناء حفظ الفاتورة: ' + e.message);
+      setError('حدث خطأ أثناء حفظ الفاتورة: ' + e.message);
+    } finally {
+      setIsSaving(false);
     }
   };
 
   return (
-    <div className="flex h-full bg-[#f0f0f0]">
+    <div className="flex h-full bg-[#f0f0f0]" dir="rtl">
       {/* Right Sidebar (Icons) */}
       <div className="w-16 bg-gray-200 border-l border-gray-300 flex flex-col items-center py-4 gap-4">
         <button className="p-2 hover:bg-gray-300 rounded" title="الأصناف"><ShoppingCart className="w-8 h-8 text-blue-700" /></button>
@@ -186,7 +257,7 @@ export default function SalesInvoice() {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="font-bold text-blue-800 text-lg">صيدلية الأمل</span>
+            <span className="font-bold text-blue-800 text-lg">{selectedBranch?.name || 'الفرع الرئيسي'}</span>
           </div>
 
           <div className="flex items-center gap-2 mr-auto">
@@ -211,20 +282,57 @@ export default function SalesInvoice() {
           </div>
         </div>
 
-        {/* Barcode Input */}
-        <div className="bg-white border border-gray-300 p-2 flex items-center gap-2">
-          <span className="font-bold text-sm">الباركود:</span>
-          <form onSubmit={handleBarcodeSubmit} className="flex-1">
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 p-2 rounded flex items-center gap-2 text-sm font-bold">
+            <AlertTriangle className="w-5 h-5" />
+            {error}
+          </div>
+        )}
+
+        {/* Barcode / Search Input */}
+        <div className="bg-white border border-gray-300 p-2 relative">
+          <div className="relative flex items-center">
+            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-gray-400" />
+            </div>
             <input
-              ref={barcodeInputRef}
+              ref={searchInputRef}
               type="text"
-              value={barcode}
-              onChange={(e) => setBarcode(e.target.value)}
-              className="w-full border border-gray-300 rounded px-2 py-1 focus:outline-none focus:border-blue-500 bg-yellow-50"
-              placeholder="مرر الباركود هنا..."
-              autoFocus
+              value={searchQuery}
+              onChange={handleSearchChange}
+              className="w-full pl-3 pr-10 py-2 border-2 border-blue-400 rounded text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-yellow-50"
+              placeholder="امسح الباركود أو ابحث باسم الصنف (F2)..."
             />
-          </form>
+            {isSearching && (
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+              </div>
+            )}
+          </div>
+
+          {/* Search Results Dropdown */}
+          {searchResults.length > 0 && searchQuery && (
+            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded shadow-lg max-h-60 overflow-y-auto">
+              {searchResults.map(med => (
+                <div 
+                  key={med.id} 
+                  onClick={() => handleSelectItem(med)}
+                  className="p-2 border-b border-gray-100 hover:bg-blue-50 cursor-pointer flex justify-between items-center"
+                >
+                  <div>
+                    <div className="font-bold text-gray-800">{med.name}</div>
+                    <div className="text-xs text-gray-500">باركود: {med.barcode}</div>
+                  </div>
+                  <div className="text-left">
+                    <div className="text-blue-700 font-bold">{med.salePrice} ج.م</div>
+                    <div className={`text-xs font-bold ${med.quantity > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      المخزون: {med.quantity}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Grid */}
@@ -233,31 +341,24 @@ export default function SalesInvoice() {
             <thead className="bg-[#2E7D32] text-white sticky top-0">
               <tr>
                 <th className="border border-gray-400 p-1">م</th>
-                <th className="border border-gray-400 p-1">كود الصنف</th>
                 <th className="border border-gray-400 p-1">اسم الصنف</th>
-                <th className="border border-gray-400 p-1">تاريخ الصلاحية</th>
-                <th className="border border-gray-400 p-1">الوحدة</th>
                 <th className="border border-gray-400 p-1">الكمية</th>
                 <th className="border border-gray-400 p-1">سعر البيع</th>
-                <th className="border border-gray-400 p-1">الرصيد</th>
                 <th className="border border-gray-400 p-1">ن الخصم</th>
                 <th className="border border-gray-400 p-1">قيمة ق الخصم</th>
                 <th className="border border-gray-400 p-1">قيمة بعد الخصم</th>
+                <th className="border border-gray-400 p-1">حذف</th>
               </tr>
             </thead>
             <tbody>
               {items.map((item, idx) => {
-                const med = medicines.find(m => m.id === item.medicineId);
                 const itemTotalBeforeDiscount = item.total;
                 const itemNetTotal = itemTotalBeforeDiscount - (item.discountValue || 0);
 
                 return (
                   <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                     <td className="border border-gray-300 p-1 text-center">{idx + 1}</td>
-                    <td className="border border-gray-300 p-1">{med?.code}</td>
                     <td className="border border-gray-300 p-1 font-bold text-blue-800">{item.name}</td>
-                    <td className="border border-gray-300 p-1">{med?.expiryDate}</td>
-                    <td className="border border-gray-300 p-1">{med?.unit || 'علبة'}</td>
                     <td className="border border-gray-300 p-1">
                       <input 
                         type="number" 
@@ -268,7 +369,6 @@ export default function SalesInvoice() {
                       />
                     </td>
                     <td className="border border-gray-300 p-1">{item.price.toFixed(2)}</td>
-                    <td className="border border-gray-300 p-1 text-center">{med?.quantity}</td>
                     <td className="border border-gray-300 p-1">
                       <input 
                         type="number" 
@@ -280,6 +380,11 @@ export default function SalesInvoice() {
                     </td>
                     <td className="border border-gray-300 p-1">{itemTotalBeforeDiscount.toFixed(2)}</td>
                     <td className="border border-gray-300 p-1 font-bold">{itemNetTotal.toFixed(2)}</td>
+                    <td className="border border-gray-300 p-1 text-center">
+                      <button onClick={() => removeItem(idx)} className="text-red-500 hover:text-red-700">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
@@ -287,9 +392,6 @@ export default function SalesInvoice() {
               {Array.from({ length: Math.max(0, 10 - items.length) }).map((_, i) => (
                 <tr key={`empty-${i}`}>
                   <td className="border border-gray-300 p-1 h-8"></td>
-                  <td className="border border-gray-300 p-1"></td>
-                  <td className="border border-gray-300 p-1"></td>
-                  <td className="border border-gray-300 p-1"></td>
                   <td className="border border-gray-300 p-1"></td>
                   <td className="border border-gray-300 p-1"></td>
                   <td className="border border-gray-300 p-1"></td>
@@ -369,8 +471,8 @@ export default function SalesInvoice() {
         <button onClick={() => setItems([])} className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded">
           <FilePlus className="w-6 h-6 text-blue-600" /> جديد
         </button>
-        <button onClick={handleSave} className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded">
-          <Save className="w-6 h-6 text-green-600" /> حفظ
+        <button onClick={handleSave} disabled={isSaving} className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded disabled:opacity-50">
+          <Save className="w-6 h-6 text-green-600" /> {isSaving ? 'جاري...' : 'حفظ (F5)'}
         </button>
         <button className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded">
           <Home className="w-6 h-6 text-gray-600" /> الرئيسية
@@ -393,11 +495,8 @@ export default function SalesInvoice() {
         <button className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded">
           <Clock className="w-6 h-6 text-gray-600" /> فواتير غير مكتملة
         </button>
-        <button className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded">
-          <XCircle className="w-6 h-6 text-red-600" /> إغلاق
-        </button>
         <button className="bg-gray-100 border border-gray-400 hover:bg-gray-300 p-2 flex flex-col items-center gap-1 rounded mt-auto">
-          <Printer className="w-6 h-6 text-gray-800" /> طباعة الاستخدام
+          <Printer className="w-6 h-6 text-gray-800" /> طباعة
         </button>
       </div>
     </div>

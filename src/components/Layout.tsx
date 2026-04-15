@@ -47,6 +47,8 @@ export default function Layout({ onLogout }: { onLogout: () => void }) {
       title: 'المخازن',
       items: [
         { label: 'المخازن الداخلية', path: '/stores' },
+        { label: 'استلام طلبية', path: '/inventory/receive' },
+        { label: 'نقل مخزون', path: '/inventory/transfer' },
         { label: 'تقرير حركة صنف', path: '/reports/item-movement' },
       ]
     },

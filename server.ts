@@ -121,6 +121,44 @@ async function startServer() {
       key TEXT PRIMARY KEY,
       value TEXT
     );
+    CREATE TABLE IF NOT EXISTS stock_receipts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      branch_id INTEGER NOT NULL,
+      supplier_id INTEGER,
+      receipt_date TEXT NOT NULL DEFAULT (datetime('now')),
+      total_value REAL DEFAULT 0,
+      notes TEXT,
+      created_by TEXT,
+      FOREIGN KEY (branch_id) REFERENCES branches(id)
+    );
+    CREATE TABLE IF NOT EXISTS stock_receipt_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      receipt_id INTEGER NOT NULL,
+      product_id INTEGER NOT NULL,
+      quantity REAL NOT NULL,
+      purchase_price REAL NOT NULL,
+      expiry_date TEXT,
+      FOREIGN KEY (receipt_id) REFERENCES stock_receipts(id),
+      FOREIGN KEY (product_id) REFERENCES medicines(id)
+    );
+    CREATE TABLE IF NOT EXISTS stock_transfers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      from_branch_id INTEGER NOT NULL,
+      to_branch_id INTEGER NOT NULL,
+      transfer_date TEXT NOT NULL DEFAULT (datetime('now')),
+      notes TEXT,
+      created_by TEXT,
+      FOREIGN KEY (from_branch_id) REFERENCES branches(id),
+      FOREIGN KEY (to_branch_id) REFERENCES branches(id)
+    );
+    CREATE TABLE IF NOT EXISTS stock_transfer_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      transfer_id INTEGER NOT NULL,
+      product_id INTEGER NOT NULL,
+      quantity REAL NOT NULL,
+      FOREIGN KEY (transfer_id) REFERENCES stock_transfers(id),
+      FOREIGN KEY (product_id) REFERENCES medicines(id)
+    );
   `);
 
   // Seed default admin and store
@@ -350,11 +388,244 @@ async function startServer() {
   });
 
   // Medicines
+  // --- New Endpoints for Features 1, 2, 3 ---
+
+  // Feature 1: Stock Receipts (استلام طلبية)
+  app.post('/api/stock-receipts', async (req, res) => {
+    const { branchId, supplierId, notes, items } = req.body;
+    const username = req.headers['x-username'] as string;
+    
+    if (!branchId || !items || !items.length) {
+      return res.status(400).json({ error: 'Branch ID and items are required' });
+    }
+
+    try {
+      await db.exec('BEGIN TRANSACTION');
+      
+      let totalValue = 0;
+      for (const item of items) {
+        totalValue += item.quantity * item.purchasePrice;
+      }
+
+      const result = await db.run(
+        'INSERT INTO stock_receipts (branch_id, supplier_id, total_value, notes, created_by) VALUES (?, ?, ?, ?, ?)',
+        [branchId, supplierId, totalValue, notes, username]
+      );
+      
+      const receiptId = result.lastID;
+
+      for (const item of items) {
+        await db.run(
+          'INSERT INTO stock_receipt_items (receipt_id, product_id, quantity, purchase_price, expiry_date) VALUES (?, ?, ?, ?, ?)',
+          [receiptId, item.productId, item.quantity, item.purchasePrice, item.expiryDate]
+        );
+
+        // Update product stock and optionally purchase price/expiry date
+        await db.run(
+          'UPDATE medicines SET quantity = quantity + ?, purchasePrice = ?, expiryDate = ? WHERE id = ?',
+          [item.quantity, item.purchasePrice, item.expiryDate, item.productId]
+        );
+      }
+
+      await db.exec('COMMIT');
+      await logAction(username, 'CREATE_STOCK_RECEIPT', { receiptId, totalValue });
+      res.json({ success: true, receiptId });
+    } catch (e: any) {
+      await db.exec('ROLLBACK');
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.get('/api/stock-receipts', async (req, res) => {
+    try {
+      const receipts = await db.all('SELECT * FROM stock_receipts ORDER BY receipt_date DESC');
+      res.json(receipts);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Feature 3: Stock Transfers (نقل مخزون)
+  app.post('/api/stock-transfers', async (req, res) => {
+    const { fromBranchId, toBranchId, notes, items } = req.body;
+    const username = req.headers['x-username'] as string;
+
+    if (!fromBranchId || !toBranchId || !items || !items.length) {
+      return res.status(400).json({ error: 'Source, destination, and items are required' });
+    }
+
+    try {
+      await db.exec('BEGIN TRANSACTION');
+
+      const result = await db.run(
+        'INSERT INTO stock_transfers (from_branch_id, to_branch_id, notes, created_by) VALUES (?, ?, ?, ?)',
+        [fromBranchId, toBranchId, notes, username]
+      );
+      
+      const transferId = result.lastID;
+
+      for (const item of items) {
+        await db.run(
+          'INSERT INTO stock_transfer_items (transfer_id, product_id, quantity) VALUES (?, ?, ?)',
+          [transferId, item.productId, item.quantity]
+        );
+
+        // Deduct from source branch
+        await db.run(
+          'UPDATE medicines SET quantity = quantity - ? WHERE id = ?',
+          [item.quantity, item.productId]
+        );
+
+        // Add to destination branch
+        // Check if product exists in destination branch by barcode or name
+        const sourceProduct = await db.get('SELECT * FROM medicines WHERE id = ?', [item.productId]);
+        if (sourceProduct) {
+          const destProduct = await db.get(
+            'SELECT * FROM medicines WHERE branchId = ? AND (barcode = ? OR name = ?)',
+            [toBranchId, sourceProduct.barcode, sourceProduct.name]
+          );
+
+          if (destProduct) {
+            await db.run(
+              'UPDATE medicines SET quantity = quantity + ? WHERE id = ?',
+              [item.quantity, destProduct.id]
+            );
+          } else {
+            // Create new product in destination branch
+            const newCode = sourceProduct.code + '-B' + toBranchId; // Ensure unique code
+            await db.run(
+              'INSERT INTO medicines (code, barcode, name, unit, purchasePrice, salePrice, quantity, reorderLimit, expiryDate, manufacturer, storeId, branchId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+              [newCode, sourceProduct.barcode, sourceProduct.name, sourceProduct.unit, sourceProduct.purchasePrice, sourceProduct.salePrice, item.quantity, sourceProduct.reorderLimit, sourceProduct.expiryDate, sourceProduct.manufacturer, sourceProduct.storeId, toBranchId]
+            );
+          }
+        }
+      }
+
+      await db.exec('COMMIT');
+      await logAction(username, 'CREATE_STOCK_TRANSFER', { transferId, fromBranchId, toBranchId });
+      res.json({ success: true, transferId });
+    } catch (e: any) {
+      await db.exec('ROLLBACK');
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Search products by name or barcode
+  app.get('/api/products/search', async (req, res) => {
+    const { q, branch_id } = req.query;
+    if (!q || !branch_id) {
+      return res.status(400).json({ error: 'Query (q) and branch_id are required' });
+    }
+    try {
+      const products = await db.all(
+        'SELECT * FROM medicines WHERE branchId = ? AND (name LIKE ? OR barcode = ? OR code = ?) LIMIT 20',
+        [branch_id, `%${q}%`, q, q]
+      );
+      res.json(products);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Get low stock items
+  app.get('/api/products/low-stock', async (req, res) => {
+    const { branch_id } = req.query;
+    try {
+      let query = 'SELECT * FROM medicines WHERE quantity <= reorderLimit';
+      const params: any[] = [];
+      if (branch_id) {
+        query += ' AND branchId = ?';
+        params.push(branch_id);
+      }
+      const products = await db.all(query, params);
+      res.json(products);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Get expiring items
+  app.get('/api/products/expiring', async (req, res) => {
+    const { days, branch_id } = req.query;
+    const daysNum = parseInt(days as string) || 30;
+    try {
+      const targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() + daysNum);
+      const targetDateStr = targetDate.toISOString().split('T')[0];
+
+      let query = 'SELECT * FROM medicines WHERE expiryDate <= ? AND expiryDate != ""';
+      const params: any[] = [targetDateStr];
+      
+      if (branch_id) {
+        query += ' AND branchId = ?';
+        params.push(branch_id);
+      }
+      
+      const products = await db.all(query, params);
+      res.json(products);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // --- End of New Endpoints ---
+
   app.get('/api/medicines', async (req, res) => {
     try {
       const medicines = await db.all('SELECT * FROM medicines');
       res.json(medicines);
     } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post('/api/medicines/extract-db', upload.single('file'), async (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+    
+    try {
+      const uploadedDbPath = req.file.path;
+      const uploadedDb = await open({
+        filename: uploadedDbPath,
+        driver: sqlite3.Database
+      });
+      
+      const tables = await uploadedDb.all("SELECT name FROM sqlite_master WHERE type='table'");
+      const tableNames = tables.map(t => t.name);
+      
+      let targetTable = '';
+      const possibleNames = ['medicines', 'medicine', 'drugs', 'drug', 'products', 'product', 'items', 'item', 'الأدوية', 'الاصناف'];
+      for (const name of possibleNames) {
+        const found = tableNames.find(t => t.toLowerCase() === name.toLowerCase());
+        if (found) {
+          targetTable = found;
+          break;
+        }
+      }
+      
+      if (!targetTable && tableNames.length > 0) {
+        const userTables = tableNames.filter(t => !t.startsWith('sqlite_'));
+        if (userTables.length > 0) {
+          targetTable = userTables[0];
+        }
+      }
+
+      if (!targetTable) {
+        await uploadedDb.close();
+        fs.unlinkSync(uploadedDbPath);
+        return res.status(400).json({ error: 'لم يتم العثور على جداول في قاعدة البيانات.' });
+      }
+
+      const rows = await uploadedDb.all(`SELECT * FROM "${targetTable}"`);
+      await uploadedDb.close();
+      fs.unlinkSync(uploadedDbPath);
+
+      res.json({ table: targetTable, rows });
+    } catch (e: any) {
+      if (req.file && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
       res.status(500).json({ error: e.message });
     }
   });
@@ -453,6 +724,66 @@ async function startServer() {
         fs.unlinkSync(req.file.path);
       }
       res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post('/api/medicines/batch', async (req, res) => {
+    const { medicines } = req.body;
+    if (!Array.isArray(medicines)) {
+      return res.status(400).json({ error: 'Invalid data format. Expected an array of medicines.' });
+    }
+
+    let importedCount = 0;
+    let errors: string[] = [];
+
+    await db.exec('BEGIN TRANSACTION');
+    try {
+      for (const med of medicines) {
+        try {
+          let code = med.code || med.item_code || '';
+          if (!code) {
+            code = 'MED-' + Math.floor(Math.random() * 1000000);
+          }
+          const barcode = med.barcode || '';
+          const name = med.name || med.name_ar || med.name_en || 'بدون اسم';
+          const unit = med.unit || '';
+          const purchasePrice = parseFloat(med.purchasePrice || med.purchase_price || 0);
+          const salePrice = parseFloat(med.salePrice || med.selling_price || 0);
+          const quantity = parseInt(med.quantity || 0);
+          const reorderLimit = parseInt(med.reorderLimit || 0);
+          const expiryDate = med.expiryDate || med.expiry_date || '';
+          const manufacturer = med.manufacturer || med.company || '';
+          const storeId = med.storeId || 1;
+          const branchId = med.branchId || 1;
+
+          try {
+            await db.run(
+              'INSERT INTO medicines (code, barcode, name, unit, purchasePrice, salePrice, quantity, reorderLimit, expiryDate, manufacturer, storeId, branchId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+              [code, barcode, name, unit, purchasePrice, salePrice, quantity, reorderLimit, expiryDate, manufacturer, storeId, branchId]
+            );
+          } catch (insertErr: any) {
+            if (insertErr.message.includes('UNIQUE constraint failed')) {
+              code = code + '-' + Math.floor(Math.random() * 10000);
+              await db.run(
+                'INSERT INTO medicines (code, barcode, name, unit, purchasePrice, salePrice, quantity, reorderLimit, expiryDate, manufacturer, storeId, branchId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [code, barcode, name, unit, purchasePrice, salePrice, quantity, reorderLimit, expiryDate, manufacturer, storeId, branchId]
+              );
+            } else {
+              throw insertErr;
+            }
+          }
+          importedCount++;
+        } catch (err: any) {
+          errors.push(`خطأ في الصنف ${med.name || med.name_ar || 'غير معروف'}: ${err.message}`);
+        }
+      }
+      await db.exec('COMMIT');
+      await logAction(req.headers['x-username'] as string, 'IMPORT_MEDICINES_BATCH', { count: importedCount, errors: errors.length });
+      
+      res.json({ success: true, count: importedCount, errors: errors.slice(0, 10) });
+    } catch (err: any) {
+      await db.exec('ROLLBACK');
+      res.status(500).json({ error: err.message });
     }
   });
 

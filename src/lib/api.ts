@@ -142,6 +142,44 @@ export const api = {
   },
 
   // Medicines
+  createStockReceipt: async (data: any) => {
+    const res = await fetch(`${API_URL}/stock-receipts`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error('Failed to create stock receipt');
+    return res.json();
+  },
+  createStockTransfer: async (data: any) => {
+    const res = await fetch(`${API_URL}/stock-transfers`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error('Failed to create stock transfer');
+    return res.json();
+  },
+  searchProducts: async (query: string, branchId: number) => {
+    const res = await fetch(`${API_URL}/products/search?q=${encodeURIComponent(query)}&branch_id=${branchId}`, {
+      headers: getHeaders()
+    });
+    if (!res.ok) throw new Error('Failed to search products');
+    return res.json();
+  },
+  getLowStockProducts: async (branchId?: number) => {
+    const url = branchId ? `${API_URL}/products/low-stock?branch_id=${branchId}` : `${API_URL}/products/low-stock`;
+    const res = await fetch(url, { headers: getHeaders() });
+    if (!res.ok) throw new Error('Failed to fetch low stock products');
+    return res.json();
+  },
+  getExpiringProducts: async (days: number = 30, branchId?: number) => {
+    let url = `${API_URL}/products/expiring?days=${days}`;
+    if (branchId) url += `&branch_id=${branchId}`;
+    const res = await fetch(url, { headers: getHeaders() });
+    if (!res.ok) throw new Error('Failed to fetch expiring products');
+    return res.json();
+  },
   getMedicines: async (): Promise<Medicine[]> => {
     const res = await fetch(`${API_URL}/medicines`, { headers: getHeaders() });
     return res.json();
@@ -170,6 +208,36 @@ export const api = {
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({ error: res.statusText }));
       throw new Error(errorData.error || 'Failed to import database');
+    }
+    return res.json();
+  },
+  extractMedicinesDb: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const headers = getHeaders();
+    delete (headers as any)['Content-Type'];
+    
+    const res = await fetch(`${API_URL}/medicines/extract-db`, {
+      method: 'POST',
+      headers,
+      body: formData
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error(errorData.error || 'Failed to extract database');
+    }
+    return res.json();
+  },
+  importMedicinesBatch: async (medicines: any[]) => {
+    const res = await fetch(`${API_URL}/medicines/batch`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ medicines })
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error(errorData.error || 'Failed to import medicines batch');
     }
     return res.json();
   },

@@ -27,6 +27,8 @@ import CustomerStatement from './pages/CustomerStatement';
 import SalesReturn from './pages/SalesReturn';
 import CashierClose from './pages/CashierClose';
 import About from './pages/About';
+import ReceiveOrder from './pages/ReceiveOrder';
+import TransferStock from './pages/TransferStock';
 
 import { BranchProvider } from './contexts/BranchContext';
 
@@ -75,6 +77,8 @@ export default function App() {
                 <Route path="accounts/in" element={<CashIn />} />
                 <Route path="pharmacy-info" element={<PharmacyInfo />} />
                 <Route path="inventory/add" element={<AddItem />} />
+                <Route path="inventory/receive" element={<ReceiveOrder />} />
+                <Route path="inventory/transfer" element={<TransferStock />} />
                 <Route path="reports/item-movement" element={<ItemMovement />} />
                 <Route path="suppliers/statement" element={<SupplierStatement />} />
                 <Route path="purchases/return" element={<PurchaseReturn />} />
