@@ -18,7 +18,8 @@ async function startServer() {
   app.use(express.json({ limit: '50mb' }));
 
   // Initialize SQLite Database
-  const dbPath = path.join(process.cwd(), 'pharmacy.db');
+  const userDataPath = process.env.USER_DATA_PATH || process.cwd();
+  const dbPath = path.join(userDataPath, 'pharmacy.db');
   const db = await open({
     filename: dbPath,
     driver: sqlite3.Database
@@ -1087,7 +1088,8 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
+    const appPath = process.env.APP_PATH || process.cwd();
+    const distPath = path.join(appPath, 'dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));

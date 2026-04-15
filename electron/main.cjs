@@ -56,7 +56,15 @@ app.whenReady().then(() => {
   if (app.isPackaged) {
     // In production, run the compiled server
     const serverPath = path.join(process.resourcesPath, 'server.cjs');
-    serverProcess = spawn('node', [serverPath], { cwd: process.resourcesPath });
+    serverProcess = spawn('node', [serverPath], { 
+      cwd: process.resourcesPath,
+      env: {
+        ...process.env,
+        NODE_ENV: 'production',
+        USER_DATA_PATH: app.getPath('userData'),
+        APP_PATH: app.getAppPath()
+      }
+    });
     
     serverProcess.stdout.on('data', (data) => console.log(`Server: ${data}`));
     serverProcess.stderr.on('data', (data) => console.error(`Server Error: ${data}`));
